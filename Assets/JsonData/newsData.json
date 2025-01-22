@@ -1,0 +1,5 @@
+{
+    "newsTypes": ["politics", "sports", "technology", "weather"],
+    "sourceTypes": ["social media", "online article", "radio"]
+  }
+  
