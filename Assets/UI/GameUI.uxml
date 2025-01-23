@@ -1,3 +1,14 @@
 <engine:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:engine="UnityEngine.UIElements" xmlns:editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
     <Style src="project://database/Assets/UI/game-ui.uss?fileID=7433441132597879392&amp;guid=dbe77c80cd6feeb4cb2b515896927f0b&amp;type=3#game-ui" />
+    <engine:VisualElement name="VisualElement" class="root" style="justify-content: flex-start; align-items: center; align-content: center; align-self: center;">
+        <engine:VisualElement class="tab-container" style="background-color: rgba(44, 44, 44, 0); align-items: flex-end; justify-content: space-around; align-self: stretch; width: 30%; align-content: center; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; height: 60%;">
+            <engine:Button name="news" class="tab" style="white-space: pre; text-overflow: clip; -unity-text-align: middle-center; width: 20%; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; margin-top: 5%; margin-right: 0; margin-bottom: 5%; margin-left: 0; height: 20%;" />
+            <engine:Button name="post" class="tab" style="width: 20%; margin-top: 5%; margin-right: 0; margin-bottom: 5%; margin-left: 0; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; height: 20%;" />
+            <engine:Button name="note" class="tab" style="width: 20%; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; margin-top: 5%; margin-right: 0; margin-bottom: 5%; margin-left: 0; height: 20%;" />
+            <engine:Button name="result" class="tab" style="width: 20%; margin-top: 5%; margin-right: 0; margin-bottom: 5%; margin-left: 0; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; height: 20%;" />
+        </engine:VisualElement>
+        <engine:VisualElement name="contentPanel" class="content-panel" style="height: 100%; align-items: flex-start; justify-content: flex-start; align-self: center;">
+            <engine:Label name="contentText" class="content-text" style="font-size: 22px; -unity-font-style: bold;" />
+        </engine:VisualElement>
+    </engine:VisualElement>
 </engine:UXML>
