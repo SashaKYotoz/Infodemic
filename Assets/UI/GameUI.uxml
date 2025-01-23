@@ -1,0 +1,3 @@
+<engine:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:engine="UnityEngine.UIElements" xmlns:editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/game-ui.uss?fileID=7433441132597879392&amp;guid=dbe77c80cd6feeb4cb2b515896927f0b&amp;type=3#game-ui" />
+</engine:UXML>
