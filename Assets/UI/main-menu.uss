@@ -14,17 +14,7 @@
     left: auto;
     background-color: rgba(0, 0, 0, 0);
     justify-content: center;
-    visibility: visible;
     -unity-background-image-tint-color: rgb(0, 0, 0);
-    border-top-width: 0;
-    border-right-width: 0;
-    border-bottom-width: 0;
-    border-left-width: 0;
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-    border-bottom-left-radius: 0;
-    max-width: none;
     color: rgb(255, 255, 255);
     -unity-font-style: bold;
     text-shadow: 5px 1px 0 rgb(84, 84, 84);
@@ -47,15 +37,18 @@
 }
 
 .unity-button:hover {
-    scale: 1.1 1.1;
+    scale: 1 1;
     background-color: rgb(97, 97, 97);
     -unity-background-image-tint-color: rgb(72, 72, 72);
+    translate: 1% 0;
 }
+
 .credits-text {
     font-size: 18px;
     color: white;
     padding: 10px;
 }
+
 .header {
     font-size: 24px;
     color: white;
