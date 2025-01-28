@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Unity.VisualScripting;
 using UnityEditor;
+using UnityEditor.ShaderGraph;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -19,6 +20,8 @@ public class GameUIController : MonoBehaviour
     // web article's labels
     private Label articleContent, articleTitle;
     private List<Button> goToBrowserButtons = new List<Button>();
+
+    private Dictionary<Label, List<string>> clickedWordsPerLabel = new Dictionary<Label, List<string>>();
 
     private AudioSource audioSource;
 
@@ -50,6 +53,16 @@ public class GameUIController : MonoBehaviour
 
         goToBrowserButtons = root.Query<Button>(name: "goBackButton").ToList();
         goToBrowserButtons.ForEach(b => b.RegisterCallback<ClickEvent>(PlayClickSound));
+
+        var textLabels = root.Query<Label>().Where(label => label.ClassListContains("supports_change")).ToList();
+        foreach (var label in textLabels)
+        {
+            if (!clickedWordsPerLabel.ContainsKey(label))
+            {
+                clickedWordsPerLabel[label] = new List<string>();
+            }
+            label.RegisterCallback<PointerDownEvent>(evt => OnTextClicked(evt, label));
+        }
     }
     private void Start()
     {
@@ -68,7 +81,7 @@ public class GameUIController : MonoBehaviour
             Label newsTextLabel = fillableNewsHolder.Q<Label>("newsHolderText");
             newsTextLabel.text = "abyaka";
             VisualElement newsPictureHolder = fillableNewsHolder.Q<VisualElement>("newsPictureHolder");
-            fillableNewsHolder.RegisterCallbackOnce<ClickEvent>(callback => ChangeDisplayOfPanel(callback, sourcePanel, "linksHolder", "sometext" + i));
+            fillableNewsHolder.RegisterCallback<ClickEvent>(callback => ChangeDisplayOfPanel(callback, sourcePanel, "linksHolder", "sometext" + i));
             newsPanel.Add(fillableNewsHolder);
         }
     }
@@ -89,15 +102,80 @@ public class GameUIController : MonoBehaviour
             if (element1 is ListView listView)
             {
                 Label textToPut = new Label();
-                if (textToPut != null)
+                if (contentToPutIn != null)
                     textToPut.text = contentToPutIn;
                 textToPut.style.marginTop = new StyleLength(new Length(5, LengthUnit.Percent));
                 textToPut.style.color = Color.black;
                 textToPut.style.width = new StyleLength(new Length(100, LengthUnit.Percent));
-                textToPut.style.height = new StyleLength(new Length(15, LengthUnit.Percent));
+                textToPut.style.height = new StyleLength(new Length(25, LengthUnit.Percent));
+                textToPut.style.backgroundColor = new StyleColor(new Color(0.9f, 0.9f, 0.9f));
+                textToPut.RegisterCallback<ClickEvent>(callback =>
+                {
+                    socialMedia.style.display = DisplayStyle.Flex;
+                    element.style.display = DisplayStyle.None;
+                });
                 listView.hierarchy.Add(textToPut);
             }
         }
     }
     //TODO: collect words clicked by player to list
+    private void OnTextClicked(PointerDownEvent evt, Label textLabel)
+    {
+        Vector2 localMousePosition = evt.localPosition;
+        string clickedWord = GetWordAtPosition(textLabel, localMousePosition);
+
+        if (!string.IsNullOrEmpty(clickedWord))
+        {
+            clickedWordsPerLabel[textLabel].Add(clickedWord);
+            HighlightWord(textLabel, clickedWord);
+        }
+    }
+
+    private string GetWordAtPosition(Label textLabel, Vector2 position)
+    {
+        string fullText = textLabel.text;
+        string[] words = fullText.Split(new char[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
+
+        float accumulatedWidth = 0f;
+        float spaceWidth = textLabel.MeasureTextSize(" ", 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x;
+
+        for (int i = 0; i < words.Length; i++)
+        {
+            float wordWidth = textLabel.MeasureTextSize(words[i], 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x;
+
+            if (position.x >= accumulatedWidth && position.x <= accumulatedWidth + wordWidth)
+            {
+                Debug.Log($"Clicked word: {words[i]} at position {position}");
+                return words[i];
+            }
+            accumulatedWidth += wordWidth + spaceWidth;
+        }
+
+        return "";
+    }
+
+
+
+
+    private void HighlightWord(Label textLabel, string word)
+    {
+        string fullText = textLabel.text;
+        string highlightedText = "";
+
+        string[] words = fullText.Split(new char[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
+
+        for (int i = 0; i < words.Length; i++)
+        {
+            if (words[i] == word)
+            {
+                highlightedText += $"<color=yellow>{words[i]}</color> ";
+            }
+            else
+            {
+                highlightedText += words[i] + " ";
+            }
+        }
+
+        textLabel.text = highlightedText.Trim();
+    }
 }

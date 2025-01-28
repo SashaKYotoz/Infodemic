@@ -114,3 +114,10 @@
     background-color: white;
     height: 100%;
 }
+
+.supports_change {
+}
+.highlighted-word {
+    color: orange;
+    font-weight: bold;
+}

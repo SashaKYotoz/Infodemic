@@ -26,11 +26,11 @@
         <ui:VisualElement name="socialMedia" class="content-panel" style="flex-grow: 1; display: none; flex-direction: column; font-size: 22px; color: rgb(255, 255, 255); -unity-font-style: bold; width: 50%; background-color: rgb(190, 190, 190); height: 100%; align-self: flex-start;">
             <ui:VisualElement name="infoContainer" style="width: 100%; height: 30%; display: flex; flex-direction: row; align-items: center; align-self: flex-start; justify-content: center;">
                 <ui:TabView name="pictureHolder" style="background-color: rgba(0, 0, 0, 0.75); width: 30%; height: 100%;" />
-                <ui:Label name="personInfo" class="content-text" style="flex-grow: 1; font-size: 22px; -unity-font-style: bold; white-space: normal; -unity-text-align: upper-center; text-overflow: ellipsis; padding-left: 10px; align-items: flex-start;" />
+                <ui:Label name="personInfo" class="content-text supports_change" style="flex-grow: 1; font-size: 22px; -unity-font-style: bold; white-space: normal; -unity-text-align: upper-center; text-overflow: ellipsis; padding-left: 10px; align-items: flex-start;" />
             </ui:VisualElement>
             <ui:VisualElement name="hr" class="horizontal-line" />
             <ui:VisualElement name="additionalInfo" style="width: 100%; height: 70%; display: flex; align-items: flex-start; justify-content: flex-start; align-self: flex-start;">
-                <ui:Label name="socialMediaContent" text="Additional information goes here." class="content-text" style="font-size: 20px; text-align: center; padding: 10px; width: 100%; height: 80%;" />
+                <ui:Label name="socialMediaContent" text="Additional information goes here." class="content-text supports_change" style="font-size: 20px; text-align: center; padding: 10px; width: 100%; height: 80%;" />
             </ui:VisualElement>
             <ui:Button name="goBackButton" text="&lt;-" class="return-button" />
         </ui:VisualElement>
@@ -41,12 +41,12 @@
             </ui:VisualElement>
             <ui:VisualElement name="divider0" class="vertical-rule" />
             <ui:VisualElement name="centerPanel" class="panel" style="width: 60%; align-items: flex-start; justify-content: flex-start;">
-                <ui:Label text="Center Panel Content" name="articleContent" class="panel-text" style="width: 100%; height: 100%;" />
+                <ui:Label text="Center Panel Content" name="articleContent" class="panel-text supports_change" style="width: 100%; height: 100%;" />
             </ui:VisualElement>
             <ui:VisualElement name="divider1" class="vertical-rule" />
             <ui:VisualElement name="rightPanel" class="panel" style="width: 25%; justify-content: flex-start; align-items: center; display: flex;">
                 <ui:VisualElement name="articlePictureHolder" class="square" style="margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; height: 20%;" />
-                <ui:Label text="Right Panel Text" name="articleTitle" class="panel-text" style="-unity-text-align: upper-left; width: 100%; height: 40%;" />
+                <ui:Label text="Right Panel Text" name="articleTitle" class="panel-text supports_change" style="-unity-text-align: upper-left; width: 100%; height: 40%;" />
             </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement name="sourcePanel" class="content-panel" style="flex-grow: 1; display: none; font-size: 22px; color: rgb(255, 255, 255); -unity-font-style: bold; width: 50%; background-color: rgb(190, 190, 190); height: 100%; align-self: flex-start; align-content: flex-start; align-items: flex-start; justify-content: flex-start; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=2090127367072622557&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#browser_bg&quot;); padding-top: 20px; padding-right: 20px; padding-bottom: 20px; padding-left: 20px;">
