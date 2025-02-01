@@ -5,5 +5,5 @@ public class EventType
     public int Id { get; set; }
     public string Name { get; set; }  
     public string Description { get; set; }  
-    public string ExpectedBiases { get; set; }
+    public int LastUsedEventId { get; set; } // Foreign key to Event(Id)
 }

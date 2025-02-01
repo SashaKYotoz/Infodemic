@@ -1,5 +1,5 @@
 using SQLite4Unity3d;
-public class Biases
+public class Bias
 {
     [PrimaryKey, AutoIncrement]
     public int Id { get; set; }
