@@ -53,6 +53,8 @@ public class NewsGenerator : MonoBehaviour
         {{
             ""messages"": [
                 {{
+                    ""role"": ""system"",
+                    ""content"": ""You are game master and you generate events in base of prompt""
                     ""role"": ""user"",
                     ""content"": ""{prompt}""
                 }}

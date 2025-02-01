@@ -87,6 +87,7 @@ public class DatabaseManager : MonoBehaviour
                 Date TEXT,
                 Location TEXT,
                 GeneratedContent TEXT,
+                CoreTruth TEXT,
                 EventTypeId INTEGER,
                 FOREIGN KEY (EventTypeId) REFERENCES EventType(Id)
             );");
@@ -107,6 +108,28 @@ public class DatabaseManager : MonoBehaviour
                 FOREIGN KEY (TagId) REFERENCES Tags(Id)
             );");
 
+        _connection.Execute(@"
+            CREATE TABLE IF NOT EXISTS Posts  (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                EventId INTEGER,
+                CharacterId INTEGER,
+                OrganizationId INTEGER,              
+                Content TEXT,
+                FOREIGN KEY (EventId) REFERENCES Event(Id)
+                FOREIGN KEY (CharacterId) REFERENCES Character(Id),
+                FOREIGN KEY (OrganizationId) REFERENCES Organization(Id)
+            );");
+
+        _connection.Execute(@"
+            CREATE TABLE IF NOT EXISTS Organizations (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                Name TEXT NOT NULL,
+                TypeId INTEGER,
+                Description TEXT,
+                Credibility REAL CHECK (Credibility BETWEEN 1 AND 10),
+                LastUsedEventId INTEGER,
+                FOREIGN KEY (TypeId) REFERENCES OrganizationTypes(Id)
+            );");
 
         _connection.Execute(@"
             CREATE TABLE IF NOT EXISTS OrganizationTags (
@@ -120,17 +143,6 @@ public class DatabaseManager : MonoBehaviour
             CREATE TABLE IF NOT EXISTS OrganizationTypes (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                 Name TEXT NOT NULL
-            );");
-
-        _connection.Execute(@"
-            CREATE TABLE IF NOT EXISTS Organizations (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                Name TEXT NOT NULL,
-                TypeId INTEGER,
-                Description TEXT,
-                Credibility REAL CHECK (Credibility BETWEEN 1 AND 10),
-                LastUsedEventId INTEGER,
-                FOREIGN KEY (TypeId) REFERENCES OrganizationTypes(Id)
             );");
 
         Debug.Log("All tables created successfully!");
@@ -855,7 +867,6 @@ public class DatabaseManager : MonoBehaviour
             // Positive Events
             new { Name = "Breakthrough in Medicine", Description = "A major advancement in medical science or healthcare" },
             new { Name = "Renewable Energy Innovation", Description = "A new breakthrough in clean and renewable energy" },
-            new { Name = "Peace Agreement Signed", Description = "Two or more nations or groups sign a peace accord" },
             new { Name = "Scientific Discovery", Description = "A groundbreaking discovery in science or technology" },
             new { Name = "Economic Growth", Description = "A region or country experiences significant economic improvement" },
             new { Name = "Successful Space Mission", Description = "A milestone achievement in space exploration" },
@@ -899,61 +910,58 @@ public class DatabaseManager : MonoBehaviour
             new { EventTypeId = 2, TagId = 1 },  // #environment - Renewable Energy Innovation
             new { EventTypeId = 2, TagId = 17 }, // #energy
 
-            new { EventTypeId = 3, TagId = 3 },  // #government - Peace Agreement Signed
-            new { EventTypeId = 3, TagId = 7 },  // #activism
+            new { EventTypeId = 3, TagId = 12 }, // #science - Scientific Discovery
+            new { EventTypeId = 3, TagId = 10 }, // #education
 
-            new { EventTypeId = 4, TagId = 12 }, // #science - Scientific Discovery
-            new { EventTypeId = 4, TagId = 10 }, // #education
+            new { EventTypeId = 4, TagId = 9 },  // #economy - Economic Growth
+            new { EventTypeId = 4, TagId = 3 },  // #government
 
-            new { EventTypeId = 5, TagId = 9 },  // #economy - Economic Growth
-            new { EventTypeId = 5, TagId = 3 },  // #government
+            new { EventTypeId = 5, TagId = 20 }, // #space - Successful Space Mission
+            new { EventTypeId = 5, TagId = 12 }, // #science
 
-            new { EventTypeId = 6, TagId = 20 }, // #space - Successful Space Mission
-            new { EventTypeId = 6, TagId = 12 }, // #science
+            new { EventTypeId = 6, TagId = 1 },  // #environment - Landmark Environmental Policy
+            new { EventTypeId = 6, TagId = 3 },  // #government
 
-            new { EventTypeId = 7, TagId = 1 },  // #environment - Landmark Environmental Policy
-            new { EventTypeId = 7, TagId = 3 },  // #government
+            new { EventTypeId = 7, TagId = 5 },  // #technology - Tech Innovation
+            new { EventTypeId = 7, TagId = 12 }, // #science
 
-            new { EventTypeId = 8, TagId = 5 },  // #technology - Tech Innovation
+            new { EventTypeId = 8, TagId = 4 },  // #health - Cure for Disease
             new { EventTypeId = 8, TagId = 12 }, // #science
 
-            new { EventTypeId = 9, TagId = 4 },  // #health - Cure for Disease
-            new { EventTypeId = 9, TagId = 12 }, // #science
-
-            new { EventTypeId = 10, TagId = 7 },  // #activism - Major Charity Success
-            new { EventTypeId = 10, TagId = 11 }, // #media
+            new { EventTypeId = 9, TagId = 7 },  // #activism - Major Charity Success
+            new { EventTypeId = 9, TagId = 11 }, // #media
 
             // Neutral / Mixed Events
-            new { EventTypeId = 11, TagId = 5 },  // #technology - Global Summit on AI Ethics
-            new { EventTypeId = 11, TagId = 13 }, // #crime
+            new { EventTypeId = 10, TagId = 5 },  // #technology - Global Summit on AI Ethics
+            new { EventTypeId = 10, TagId = 13 }, // #crime
 
-            new { EventTypeId = 12, TagId = 9 },  // #economy - New Infrastructure Project
-            new { EventTypeId = 12, TagId = 19 }, // #transportation
+            new { EventTypeId = 11, TagId = 9 },  // #economy - New Infrastructure Project
+            new { EventTypeId = 11, TagId = 19 }, // #transportation
 
-            new { EventTypeId = 13, TagId = 20 }, // #space - New Space Exploration Initiative
-            new { EventTypeId = 13, TagId = 12 }, // #science
+            new { EventTypeId = 12, TagId = 20 }, // #space - New Space Exploration Initiative
+            new { EventTypeId = 12, TagId = 12 }, // #science
 
             // Negative Events
-            new { EventTypeId = 14, TagId = 1 },  // #environment - Environmental Disaster
-            new { EventTypeId = 14, TagId = 8 },  // #disaster
+            new { EventTypeId = 13, TagId = 1 },  // #environment - Environmental Disaster
+            new { EventTypeId = 13, TagId = 8 },  // #disaster
 
-            new { EventTypeId = 15, TagId = 3 },  // #government - Political Scandal
-            new { EventTypeId = 15, TagId = 6 },  // #corruption
+            new { EventTypeId = 14, TagId = 3 },  // #government - Political Scandal
+            new { EventTypeId = 14, TagId = 6 },  // #corruption
 
-            new { EventTypeId = 16, TagId = 4 },  // #health - Health Crisis
-            new { EventTypeId = 16, TagId = 12 }, // #science
+            new { EventTypeId = 15, TagId = 4 },  // #health - Health Crisis
+            new { EventTypeId = 15, TagId = 12 }, // #science
 
-            new { EventTypeId = 17, TagId = 2 },  // #corporate - Corporate Fraud
-            new { EventTypeId = 17, TagId = 9 },  // #economy
+            new { EventTypeId = 16, TagId = 2 },  // #corporate - Corporate Fraud
+            new { EventTypeId = 16, TagId = 9 },  // #economy
 
-            new { EventTypeId = 18, TagId = 5 },  // #technology - Tech Controversy
-            new { EventTypeId = 18, TagId = 13 }, // #crime
+            new { EventTypeId = 17, TagId = 5 },  // #technology - Tech Controversy
+            new { EventTypeId = 17, TagId = 13 }, // #crime
 
-            new { EventTypeId = 19, TagId = 7 },  // #activism - Labor Dispute
-            new { EventTypeId = 19, TagId = 9 },  // #economy
+            new { EventTypeId = 18, TagId = 7 },  // #activism - Labor Dispute
+            new { EventTypeId = 18, TagId = 9 },  // #economy
 
-            new { EventTypeId = 20, TagId = 11 }, // #media - Conspiracy Theory
-            new { EventTypeId = 20, TagId = 14 }  // #religion
+            new { EventTypeId = 19, TagId = 11 }, // #media - Conspiracy Theory
+            new { EventTypeId = 19, TagId = 14 }  // #religion
         };
 
         foreach (var eventTypeTag in eventTypeTags)
