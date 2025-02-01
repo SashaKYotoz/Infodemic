@@ -111,12 +111,13 @@
 
 .vertical-rule {
     width: 2px;
-    background-color: white;
+    background-color: rgb(210, 210, 210);
     height: 100%;
 }
 
 .supports_change {
 }
+
 .highlighted-word {
     color: orange;
     font-weight: bold;

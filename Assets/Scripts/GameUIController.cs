@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Unity.VisualScripting;
 using UnityEditor;
 using UnityEditor.ShaderGraph;
@@ -19,7 +21,8 @@ public class GameUIController : MonoBehaviour
     private Label personInfo, socialMediaContent;
     // web article's labels
     private Label articleContent, articleTitle;
-    private List<Button> goToBrowserButtons = new List<Button>();
+    private List<Button> gameButtons = new List<Button>();
+    private List<string> wordsPlayerSelected = new List<string>();
 
     private Dictionary<Label, List<string>> clickedWordsPerLabel = new Dictionary<Label, List<string>>();
 
@@ -51,8 +54,26 @@ public class GameUIController : MonoBehaviour
         articleContent = root.Q<Label>("articleContent");
         articleTitle = root.Q<Label>("articleTitle");
 
-        goToBrowserButtons = root.Query<Button>(name: "goBackButton").ToList();
-        goToBrowserButtons.ForEach(b => b.RegisterCallback<ClickEvent>(PlayClickSound));
+        note.RegisterCallback<ClickEvent>(HandleNotePanel);
+        news.RegisterCallback<ClickEvent>(callback => ChangeVisibility("newsPanel",true));
+        post.RegisterCallback<ClickEvent>(callback => ChangeVisibility("postPanel", !post.ClassListContains("blocked-tab")));
+        result.RegisterCallback<ClickEvent>(callback => ChangeVisibility("resultPanel", !result.ClassListContains("blocked-tab")));
+
+        gameButtons = root.Query<Button>().ToList();
+        gameButtons.ForEach(b => b.RegisterCallback<ClickEvent>(PlayClickSound));
+        root.Query<Button>(name: "goBackButton").ToList().ForEach(b => b.RegisterCallback<ClickEvent>(callback =>
+        {
+            if (root.Q("socialMedia").style.display == DisplayStyle.Flex)
+            {
+                root.Q("socialMediaPanel").style.display = DisplayStyle.Flex;
+                root.Q("socialMedia").style.display = DisplayStyle.None;
+            }
+            else
+            {
+                root.Q("sourcePanel").style.display = DisplayStyle.Flex;
+                root.Q("webArticle").style.display = DisplayStyle.None;
+            }
+        }));
 
         var textLabels = root.Query<Label>().Where(label => label.ClassListContains("supports_change")).ToList();
         foreach (var label in textLabels)
@@ -64,13 +85,52 @@ public class GameUIController : MonoBehaviour
             label.RegisterCallback<PointerDownEvent>(evt => OnTextClicked(evt, label));
         }
     }
+
+    private void HandleNotePanel(ClickEvent e)
+    {
+        var root = document.rootVisualElement;
+        if (!note.ClassListContains("blocked-tab"))
+        {
+            ChangeVisibility("notePanel",true);
+            Label textKeeper = new Label();
+            textKeeper.style.width = new StyleLength(new Length(100, LengthUnit.Percent));
+            textKeeper.style.height = new StyleLength(new Length(100, LengthUnit.Percent));
+            textKeeper.style.fontSize = 22;
+            textKeeper.style.color = Color.white;
+            foreach (string s in wordsPlayerSelected)
+            {
+                textKeeper.text += string.Format("{0} {1}", textKeeper.text.Count() % 34 == 0 ? "\n" : "\t", s);
+            }
+            root.Q("notePanel").Add(textKeeper);
+        }
+    }
+    public void ChangeVisibility(string panelName, bool condition)
+    {
+        var root = document.rootVisualElement;
+        string[] panelNames = { "postPanel", "newsPanel", "resultPanel", "notePanel" };
+
+        if (condition)
+        {
+            foreach (string panel in panelNames)
+            {
+                root.Q("contentPanel").Q<VisualElement>(panel).style.display = (panel == panelName) ? DisplayStyle.Flex : DisplayStyle.None;
+            }
+        }
+    }
     private void Start()
     {
         TextGen();
     }
+    private void Update()
+    {
+        if (wordsPlayerSelected.Any() && note.ClassListContains("blocked-tab"))
+        {
+            note.RemoveFromClassList("blocked-tab");
+        }
+    }
     private void TextGen()
     {
-        int randomAmount = Random.Range(1, 4);
+        int randomAmount = UnityEngine.Random.Range(1, 4);
         for (int i = 0; i < randomAmount; i++)
         {
             VisualTreeAsset originalAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/GameUI.uxml");
@@ -87,7 +147,11 @@ public class GameUIController : MonoBehaviour
     }
     private void OnDisable()
     {
-        goToBrowserButtons.ForEach(b => b.UnregisterCallback<ClickEvent>(PlayClickSound));
+        gameButtons.ForEach(b => b.UnregisterCallback<ClickEvent>(PlayClickSound));
+        note.RegisterCallback<ClickEvent>(HandleNotePanel);
+        news.RegisterCallback<ClickEvent>(callback => ChangeVisibility("newsPanel",true));
+        post.RegisterCallback<ClickEvent>(callback => ChangeVisibility("postPanel", !post.ClassListContains("blocked-tab")));
+        result.RegisterCallback<ClickEvent>(callback => ChangeVisibility("resultPanel", !result.ClassListContains("blocked-tab")));
     }
     private void PlayClickSound(ClickEvent e)
     {
@@ -101,7 +165,7 @@ public class GameUIController : MonoBehaviour
             VisualElement element1 = document.rootVisualElement.Q(elementToPutContentIn);
             if (element1 is ListView listView)
             {
-                Label textToPut = new Label();
+                Label textToPut = new();
                 if (contentToPutIn != null)
                     textToPut.text = contentToPutIn;
                 textToPut.style.marginTop = new StyleLength(new Length(5, LengthUnit.Percent));
@@ -111,7 +175,7 @@ public class GameUIController : MonoBehaviour
                 textToPut.style.backgroundColor = new StyleColor(new Color(0.9f, 0.9f, 0.9f));
                 textToPut.RegisterCallback<ClickEvent>(callback =>
                 {
-                    socialMedia.style.display = DisplayStyle.Flex;
+                    webArticle.style.display = DisplayStyle.Flex;
                     element.style.display = DisplayStyle.None;
                 });
                 listView.hierarchy.Add(textToPut);
@@ -126,6 +190,7 @@ public class GameUIController : MonoBehaviour
 
         if (!string.IsNullOrEmpty(clickedWord))
         {
+            wordsPlayerSelected.Add(clickedWord);
             clickedWordsPerLabel[textLabel].Add(clickedWord);
             HighlightWord(textLabel, clickedWord);
         }
@@ -153,8 +218,6 @@ public class GameUIController : MonoBehaviour
 
         return "";
     }
-
-
 
 
     private void HighlightWord(Label textLabel, string word)
