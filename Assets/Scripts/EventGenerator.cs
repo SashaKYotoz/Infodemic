@@ -7,6 +7,7 @@ using SimpleJSON;
 using SQLite4Unity3d;
 using System.IO;
 using System.Linq;
+using UnityEngine.InputSystem;
 
 public class EventGenerator : MonoBehaviour
 {
@@ -17,14 +18,26 @@ public class EventGenerator : MonoBehaviour
     private SQLiteConnection _connection;
     private string dbPath;
 
+    public PostCreator postCreator;
     private void Start()
     {
         dbPath = Path.Combine(Application.persistentDataPath, "infodemic.db");
         _connection = new SQLiteConnection(dbPath, SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create);
 
+        postCreator = new PostCreator(_connection);
+
         StartCoroutine(GenerateEvent());
     }
 
+    private void Update()
+    {
+        if (Keyboard.current.spaceKey.wasPressedThisFrame)
+        {
+            Debug.Log("Generating event...");
+            StartCoroutine(GenerateEvent());
+        }
+    }
+    
     private IEnumerator GenerateEvent()
     {
         int randomEventTypeId = Random.Range(1, 20);
@@ -43,40 +56,52 @@ Available Organizations (ID: Name):
 {string.Join("\n", organizations.Select(o => $"- ID {o.Id}: {o.Name} ({o.Description}, Type: {GetOrganizationType(o.TypeId)}, Credibility: {o.Credibility})"))}
 
 Available Characters (ID: Name):
-{string.Join("\n", characters.Select(c => $"- ID {c.Id}: {c.Name} ({c.Profession}, Affilation: {GetOrganizationName(c.Affilation)}, Credibility: {c.Credibility}, Biases: {GetCharacterBiases(c.Id)})"))}
+{string.Join("\n", characters.Select(c => $"- ID {c.Id}: {c.Name} ({c.Profession}, Affiliation: {GetOrganizationName(c.Affilation)}, Credibility: {c.Credibility}, Biases: {GetCharacterBiases(c.Id)})"))}
 
 Requirements:
-1. Use UP TO 3 organizations and UP TO 6 characters from the lists above. DO NOT INVENT NEW ENTITIES.
-2. Generate 3-5 key facts about the event (e.g., damage amount, casualties, responsible party) and include them in 'coreTruth' instead of factNUM.
-3. For each character, create a social media post that:
-   - Reflects their biases (e.g., pro-corporate characters downplay damage, activists exaggerate it) and credibility.
-   - Looks alive and realistic.
-   - Manipulates or omits some of the 'coreTruth' variables.
-   - Includes subtle clues that players can use to reconstruct the full truth.
-4. Ensure the full truth into the 'coreTruth' can be deduced by cross-referencing all posts
-5. In 'source' field, use EXACTLY one of these formats:
-   - For characters: ""Character:[ID]""
-   - For organizations: ""Organization:[ID]""
-6. Never use names - only reference shown IDs
-7. Format as STRICT JSON. Use the provided template:
+1. Use UP TO 3 organizations and UP TO 6 characters from the lists above, based on event complexity. DO NOT INVENT NEW ENTITIES.
+2. For each character, generate a social media post that:
+   - Reflects their unique biases (for example, pro-corporate characters downplay negative impacts while activist characters exaggerate them) and considers their credibility.
+   - Uses a natural, varied tone; avoid a repetitive or overly formal template.
+   - May manipulate, exaggerate, or omit some of the 'coreTruth' variables.
+   - Provides subtle clues so that, when all posts are considered together, the complete truth (the full set of key facts) can be deduced.
+3. The 'coreTruth' object should include 3-5 key facts about the event (e.g., scientificAccuracy, emissionsReduction, initialCost). You may add more key facts if the event context requires it, but ensure each fact is logical and of high quality.
+ For example (replace with your own data):
+    ""coreTruth"": {{
+      ""scientificAccuracy: ""95%"",
+      ""emissionsReduction"": ""60%"",
+      ""initialCost"": ""10 million USD""
+   }}
+4. In the generated posts:
+   - Do not include extra phrases like 'As [Organization]' or hashtags.
+   - Use the exact source format:
+       - For characters: ""Character:[ID]""
+       - For organizations: ""Organization:[ID]""
+5. Follow this strict JSON format exactly:
 {{
     ""title"": ""Event Title"",
     ""location"": ""City, Country"",
-    ""coreTruth"": {{
-        // AI-generated key facts about the event. They can be textual, percentual or numerical values.
-        ""fact1"": ""value"",
-        ""fact2"": ""value"",
-        ""fact3"": ""another_value""
+    ""coreTruth"": {{ 
+        // Generate at least 3 key facts; add more if relevant.
+        ""factKey1"": ""value"",
+        ""factKey2"": ""value"",
+        ""factKey3"": ""value""
     }},
     ""generatedContent"": [
         {{
-            ""source"": ""Organization: ID / Character: ID"",
+            ""source"": ""Organization:[ID]"" or ""Character:[ID]"",
             ""content"": ""Their perspective/statement"",
-            ""isTruthful"": ""true/false"",
+            ""isTruthful"": ""true"" or ""false"",
             ""distortions"": [""changed fact1"", ""omitted fact2""]
         }}
     ]
-}}";
+}}
+
+Ensure that:
+- All numerical and textual key facts are realistic and coherent.
+- Each post has a distinct, natural voice.
+- The overall JSON output is valid.
+";
 
         // Escape special characters in the prompt
         prompt = EscapeJsonString(prompt);
@@ -159,9 +184,9 @@ Requirements:
     ", eventTypeId);
     }
 
-    private List<Character> GetRelevantCharacters(int eventTypeId)
+    private List<Characters> GetRelevantCharacters(int eventTypeId)
     {
-        return _connection.Query<Character>(@"
+        return _connection.Query<Characters>(@"
         SELECT c.* FROM Characters c
         JOIN CharacterBiases cb ON c.Id = cb.CharacterId
         JOIN BiasTags bt ON cb.BiasId = bt.BiasId
@@ -172,7 +197,7 @@ Requirements:
     ", eventTypeId);
     }
 
-    private string GetBiasContext(List<Character> characters)
+    private string GetBiasContext(List<Characters> characters)
     {
         var context = new StringBuilder();
         foreach (var character in characters)
@@ -190,48 +215,24 @@ Requirements:
 
 
     private void SaveEventData(string jsonResponse, int eventTypeId)
-{
-    var json = JSON.Parse(jsonResponse);
-    var eventData = json["choices"][0]["message"]["content"];
-    var eventJson = JSON.Parse(eventData);
-
-    // Save event
-    var newEvent = new Event {
-        Title = eventJson["title"],
-        Location = eventJson["location"],
-        GeneratedContent = eventJson["generatedContent"].ToString(),
-        CoreTruth = eventJson["coreTruth"].ToString(),
-        EventTypeId = eventTypeId
-    };
-    _connection.Insert(newEvent);
-
-    // Save posts
-    foreach (var post in eventJson["generatedContent"].AsArray)
     {
-        var source = post.Value["source"].Value;
-        var parts = source.Split(':');
-        
-        var newPost = new Posts {
-            EventId = newEvent.Id,
-            Content = post.Value["content"],
+        var json = JSON.Parse(jsonResponse);
+        var eventData = json["choices"][0]["message"]["content"];
+        var eventJson = JSON.Parse(eventData);
+
+        // Save event
+        var newEvent = new Event
+        {
+            Title = eventJson["title"],
+            Location = eventJson["location"],
+            GeneratedContent = eventJson["generatedContent"].ToString(),
+            CoreTruth = eventJson["coreTruth"].ToString(),
+            EventTypeId = eventTypeId
         };
+        _connection.Insert(newEvent);
 
-        if (parts[0] == "Character" && int.TryParse(parts[1], out int charId))
-        {
-            newPost.CharacterId = charId;
-        }
-        else if (parts[0] == "Organization" && int.TryParse(parts[1], out int orgId))
-        {
-            newPost.OrganizationId = orgId;
-        }
-        else
-        {
-            Debug.LogError($"Invalid source format: {source}");
-            continue;
-        }
-
-        _connection.Insert(newPost);
-    }
+        // Save posts
+        postCreator.CreateAndSavePosts(eventJson, newEvent.Id);
 
         Debug.Log("Event and posts saved successfully!");
     }
