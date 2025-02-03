@@ -115,6 +115,7 @@ public class DatabaseManager : MonoBehaviour
                 CharacterId INTEGER,
                 OrganizationId INTEGER,              
                 Content TEXT,
+                IsTruthful BOOLEAN,
                 FOREIGN KEY (EventId) REFERENCES Event(Id)
                 FOREIGN KEY (CharacterId) REFERENCES Character(Id),
                 FOREIGN KEY (OrganizationId) REFERENCES Organization(Id)

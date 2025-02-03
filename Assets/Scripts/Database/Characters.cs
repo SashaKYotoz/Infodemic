@@ -1,6 +1,6 @@
 using SQLite4Unity3d;
 
-public class Character
+public class Characters
 {
     [PrimaryKey, AutoIncrement]
     public int Id { get; set; } 

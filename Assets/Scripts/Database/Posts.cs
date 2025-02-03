@@ -8,5 +8,6 @@ public class Posts
     public int? CharacterId { get; set; }
     public int? OrganizationId { get; set; }
     public string Content { get; set; }
+    public bool IsTruthful { get; set; }
 
 }
