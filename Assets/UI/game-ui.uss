@@ -122,3 +122,8 @@
     color: orange;
     font-weight: bold;
 }
+#newsPanel {
+    flex-wrap: wrap;
+    overflow: hidden;
+    justify-content: flex-start;
+}

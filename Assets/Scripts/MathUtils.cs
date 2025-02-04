@@ -20,9 +20,7 @@ public class MathUtils
         return (pDelta - pStart) / (pEnd - pStart);
     }
 
-    public static float Lerp(float pDelta, float pStart, float pEnd)
-    {
-        return pStart + pDelta * (pEnd - pStart);
+    public static bool RandomBoolean(){
+        return UnityEngine.Random.Range(0,2) == 0;
     }
-
 }

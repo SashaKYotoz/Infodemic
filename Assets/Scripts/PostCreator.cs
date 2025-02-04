@@ -1,4 +1,4 @@
-
+using System.Collections.Generic;
 using SimpleJSON;
 using SQLite4Unity3d;
 using UnityEngine;
@@ -14,7 +14,7 @@ public class PostCreator
 
     public void CreateAndSavePosts(JSONNode eventJson, int eventId)
     {
-
+        List<Posts> posts = new List<Posts>();
         foreach (var postNode in eventJson["generatedContent"].AsArray)
         {
             var post = postNode.Value;
@@ -42,10 +42,10 @@ public class PostCreator
 
             _connection.Insert(newPost);
             UpdateLastUsed(eventId, sourceType, entityId);
-
-
+            posts.Add(newPost);
         }
-
+        GameUIController gameUIController = GameObject.Find("GameUI").GetComponent<GameUIController>();
+        gameUIController.StartContent(posts);
     }
 
     private (string name, string type, int id) GetSourceDetails(string[] sourceParts)
