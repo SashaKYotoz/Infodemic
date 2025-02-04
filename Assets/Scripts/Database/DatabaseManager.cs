@@ -1,14 +1,33 @@
 using UnityEngine;
 using SQLite4Unity3d;
 using System;
-using Mono.Cecil.Cil;
-using Unity.VisualScripting;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
 public class DatabaseManager : MonoBehaviour
 {
+    private static DatabaseManager _instance;
     private SQLiteConnection _connection;
 
-    private void Start()
+    public static DatabaseManager Instance => _instance;
+    public SQLiteConnection Connection => _connection;
+
+    private void Awake()
+    {
+        if (_instance != null && _instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        _instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        InitializeDatabase();
+    }
+
+    private void InitializeDatabase()
     {
         string dbPath = $"{Application.persistentDataPath}/infodemic.db";
 
@@ -27,6 +46,124 @@ public class DatabaseManager : MonoBehaviour
         _connection.Execute("PRAGMA foreign_keys = ON;");
     }
 
+    private void OnDestroy()
+    {
+        _connection?.Close();
+        _connection?.Dispose();
+        Debug.Log("Database connection closed.");
+    }
+
+    public List<string> GetSelectedWordsForEvent(int eventId)
+    {
+        return _connection.Query<SelectedWords>(
+            "SELECT Word FROM SelectedWords WHERE EventId = ?", eventId
+        ).Select(w => w.Word).ToList();
+    }
+
+    public List<Posts> GetPostsForEvent(int eventId)
+    {
+        return _connection.Query<Posts>(
+            "SELECT * FROM Posts WHERE EventId = ?", eventId
+        );
+    }
+
+    public List<int> GetParticipatingCharacters(int eventId)
+    {
+        return _connection.Query<int>(
+            "SELECT DISTINCT CharacterId FROM Posts WHERE EventId = ? AND CharacterId IS NOT NULL",
+            eventId
+        );
+    }
+
+    public List<int> GetParticipatingOrganizations(int eventId)
+    {
+        return _connection.Query<int>(
+            "SELECT DISTINCT OrganizationId FROM Posts WHERE EventId = ? AND OrganizationId IS NOT NULL",
+            eventId
+        );
+    }
+
+
+    public List<Characters> GetCharacterDetails(List<int> characterIds)
+    {
+        if (characterIds.Count == 0) return new List<Characters>();
+
+        string placeholders = string.Join(",", characterIds.Select(_ => "?"));
+        return _connection.Query<Characters>(
+            $"SELECT * FROM Characters WHERE Id IN ({placeholders})", characterIds.ToArray()
+        );
+    }
+
+    public List<Organizations> GetOrganizationDetails(List<int> organizationIds)
+    {
+        if (organizationIds.Count == 0) return new List<Organizations>();
+
+        string placeholders = string.Join(",", organizationIds.Select(_ => "?"));
+        return _connection.Query<Organizations>(
+            $"SELECT * FROM Organizations WHERE Id IN ({placeholders})", organizationIds.ToArray()
+        );
+    }
+
+
+    public string GetOrganizationType(int typeId)
+    {
+        return _connection.Find<OrganizationTypes>(typeId)?.Name ?? "Unknown";
+    }
+
+    public string GetOrganizationName(int? orgId)
+    {
+        return orgId.HasValue ? _connection.Find<Organizations>(orgId.Value)?.Name : "Independent";
+    }
+
+    public string GetCharacterBiases(int characterId)
+    {
+        return string.Join(", ", _connection.Query<Bias>(
+            "SELECT b.Name FROM Biases b " +
+            "JOIN CharacterBiases cb ON b.Id = cb.BiasId " +
+            "WHERE cb.CharacterId = ?", characterId)
+            .Select(b => b.Name));
+    }
+    public List<Organizations> GetRelevantOrganizations(int eventTypeId)
+    {
+        return _connection.Query<Organizations>(@"
+        SELECT DISTINCT o.* FROM Organizations o
+        JOIN OrganizationTags ot ON o.Id = ot.OrganizationId
+        JOIN EventTypeTags ett ON ot.TagId = ett.TagId
+        WHERE ett.EventTypeId = ?
+        AND (o.LastUsedEventId IS NULL OR o.LastUsedEventId < datetime('now','-7 day'))
+        LIMIT 3
+    ", eventTypeId);
+    }
+
+
+    public List<Characters> GetRelevantCharacters(int eventTypeId)
+    {
+        return _connection.Query<Characters>(@"
+        SELECT DISTINCT c.* FROM Characters c
+        JOIN CharacterBiases cb ON c.Id = cb.CharacterId
+        JOIN BiasTags bt ON cb.BiasId = bt.BiasId
+        JOIN EventTypeTags ett ON bt.TagId = ett.TagId
+        WHERE ett.EventTypeId = ?
+        AND (c.LastUsedEventId IS NULL OR c.LastUsedEventId < datetime('now','-3 day'))
+        LIMIT 6
+    ", eventTypeId);
+    }
+    public string GetBiasContext(List<Characters> characters)
+    {
+        var context = new StringBuilder();
+        foreach (var character in characters)
+        {
+            var biases = _connection.Query<Bias>(@"
+            SELECT b.Name FROM Biases b
+            JOIN CharacterBiases cb ON b.Id = cb.BiasId
+            WHERE cb.CharacterId = ?
+        ", character.Id);
+
+            context.AppendLine($"{character.Name} tends to: {string.Join(", ", biases.Select(b => b.Name))}");
+        }
+        return context.ToString();
+    }
+
     private void CreateTables()
     {
 
@@ -38,11 +175,35 @@ public class DatabaseManager : MonoBehaviour
             );");
 
         _connection.Execute(@"
+            CREATE TABLE IF NOT EXISTS Media (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                Name TEXT,
+                Description TEXT,
+                Credibility REAL CHECK(Credibility BETWEEN 1 AND 10)
+            );");
+
+        _connection.Execute(@"
             CREATE TABLE IF NOT EXISTS Article (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                Title VARCHAR,
-                Content VARCHAR
+                MediaId INTEGER NOT NULL,
+                EventId INTEGER NOT NULL,
+                Title TEXT,
+                Content TEXT,
+                AccuracyScore REAL CHECK(AccuracyScore BETWEEN 0 AND 10),
+                CreatedAt DATETIME,
+                FOREIGN KEY (MediaId) REFERENCES Media(Id),
+                FOREIGN KEY (EventId) REFERENCES Events(Id)
             );");
+        _connection.Execute(@"
+            CREATE TABLE IF NOT EXISTS SelectedWords(
+                Id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                EventId INTEGER NOT NULL,
+                PostId INTEGER NOT NULL,
+                Word TEXT,
+                FOREIGN KEY (EventId) REFERENCES Events(Id),
+                FOREIGN KEY (PostId) REFERENCES Posts(Id)
+            )
+        ");
 
         _connection.Execute(@"
             CREATE TABLE IF NOT EXISTS Biases (
@@ -77,15 +238,15 @@ public class DatabaseManager : MonoBehaviour
                 Tier INTEGER,
                 LastUsedEventId INTEGER,
                 FOREIGN KEY (Affilation) REFERENCES Organizations(Id),
-                FOREIGN KEY (LastUsedEventId) REFERENCES Event(Id)
+                FOREIGN KEY (LastUsedEventId) REFERENCES Events(Id)
             );");
 
         _connection.Execute(@"
-            CREATE TABLE IF NOT EXISTS Event (
+            CREATE TABLE IF NOT EXISTS Events (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                 Title TEXT,
                 Date TEXT,
-                Location TEXT,
+                Description TEXT,
                 GeneratedContent TEXT,
                 CoreTruth TEXT,
                 EventTypeId INTEGER,
@@ -116,9 +277,9 @@ public class DatabaseManager : MonoBehaviour
                 OrganizationId INTEGER,              
                 Content TEXT,
                 IsTruthful BOOLEAN,
-                FOREIGN KEY (EventId) REFERENCES Event(Id)
-                FOREIGN KEY (CharacterId) REFERENCES Character(Id),
-                FOREIGN KEY (OrganizationId) REFERENCES Organization(Id)
+                FOREIGN KEY (EventId) REFERENCES Events(Id)
+                FOREIGN KEY (CharacterId) REFERENCES Characters(Id),
+                FOREIGN KEY (OrganizationId) REFERENCES Organizations(Id)
             );");
 
         _connection.Execute(@"
@@ -136,7 +297,7 @@ public class DatabaseManager : MonoBehaviour
             CREATE TABLE IF NOT EXISTS OrganizationTags (
                 OrganizationId INTEGER,
                 TagId INTEGER,
-                FOREIGN KEY (OrganizationId) REFERENCES Organization(Id),
+                FOREIGN KEY (OrganizationId) REFERENCES Organizations(Id),
                 FOREIGN KEY (TagId) REFERENCES Tags(Id)
             );");
 
@@ -151,6 +312,12 @@ public class DatabaseManager : MonoBehaviour
         InsertDefaultValues();
     }
 
+
+
+    public void SaveSelectedWords(SelectedWords selectedWord)
+    {
+        _connection.Insert(selectedWord);
+    }
 
     private void InsertDefaultValues()
     {
@@ -393,8 +560,11 @@ public class DatabaseManager : MonoBehaviour
             // Sentinel Dynamics
             new { CharacterId = 1, BiasId = 3 },  // James Calloway -> Pro-Corporate
             new { CharacterId = 1, BiasId = 5 },  // James Calloway -> Pro-Government
+            new { CharacterId = 1, BiasId = 2 },  // James Calloway -> Anti-Environment
+
             new { CharacterId = 2, BiasId = 3 },  // Rebecca Monroe -> Pro-Corporate
             new { CharacterId = 2, BiasId = 9 },  // Rebecca Monroe -> Nationalist
+            new { CharacterId = 2, BiasId = 2 },  // Rebecca Monroe -> Anti-Environment
 
             // Solaris Innovations
             new { CharacterId = 3, BiasId = 1 },  // Ethan Caldwell -> Pro-Environment
@@ -411,6 +581,8 @@ public class DatabaseManager : MonoBehaviour
             // Summit Capital Group
             new { CharacterId = 7, BiasId = 3 },  // Victor Langley -> Pro-Corporate
             new { CharacterId = 7, BiasId = 13 }, // Victor Langley -> Elitist
+            new { CharacterId = 7, BiasId = 2 },  // Victor Langley -> Anti-Environment
+
             new { CharacterId = 8, BiasId = 5 },  // Charlotte Brennan -> Pro-Government
             new { CharacterId = 8, BiasId = 13 }, // Charlotte Brennan -> Elitist
 
@@ -418,166 +590,181 @@ public class DatabaseManager : MonoBehaviour
             new { CharacterId = 9, BiasId = 1 },  // Cassandra Yu -> Pro-Environment
             new { CharacterId = 9, BiasId = 10 }, // Cassandra Yu -> Globalist
             new { CharacterId = 10, BiasId = 1 }, // Liam Hutchinson -> Pro-Environment
-            new { CharacterId = 10, BiasId = 10 }, // Liam Hutchinson -> Globalist
+            new { CharacterId = 10, BiasId = 10 },// Liam Hutchinson -> Globalist
 
             // Humanity’s Voice Coalition
             new { CharacterId = 11, BiasId = 6 }, // Amir Rahman -> Anti-Government
-            new { CharacterId = 11, BiasId = 10 }, // Amir Rahman -> Globalist
-            new { CharacterId = 12, BiasId = 10 }, // Sophia Martinez -> Globalist
-            new { CharacterId = 12, BiasId = 17 }, // Sophia Martinez -> Socialist
+            new { CharacterId = 11, BiasId = 10 },// Amir Rahman -> Globalist
+            new { CharacterId = 12, BiasId = 10 },// Sophia Martinez -> Globalist
+            new { CharacterId = 12, BiasId = 17 },// Sophia Martinez -> Socialist
 
             // Unity Beyond Borders
-            new { CharacterId = 13, BiasId = 10 }, // Jonathan Wells -> Globalist
-            new { CharacterId = 13, BiasId = 7 },  // Jonathan Wells -> Pro-Science
-            new { CharacterId = 14, BiasId = 10 }, // Amina Rahman -> Globalist
-            new { CharacterId = 14, BiasId = 5 },  // Amina Rahman -> Pro-Government
+            new { CharacterId = 13, BiasId = 10 },// Jonathan Wells -> Globalist
+            new { CharacterId = 13, BiasId = 7 }, // Jonathan Wells -> Pro-Science
+            new { CharacterId = 14, BiasId = 10 },// Amina Rahman -> Globalist
+            new { CharacterId = 14, BiasId = 5 }, // Amina Rahman -> Pro-Government
 
             // Progressive Alliance
-            new { CharacterId = 15, BiasId = 1 },  // Marissa Cohen -> Pro-Environment
-            new { CharacterId = 15, BiasId = 10 }, // Marissa Cohen -> Globalist
-            new { CharacterId = 16, BiasId = 5 },  // Felix Grant -> Pro-Government
-            new { CharacterId = 16, BiasId = 17 }, // Felix Grant -> Socialist
+            new { CharacterId = 15, BiasId = 1 }, // Marissa Cohen -> Pro-Environment
+            new { CharacterId = 15, BiasId = 10 },// Marissa Cohen -> Globalist
+            new { CharacterId = 16, BiasId = 5 }, // Felix Grant -> Pro-Government
+            new { CharacterId = 16, BiasId = 17 },// Felix Grant -> Socialist
 
             // Liberty Front
-            new { CharacterId = 17, BiasId = 16 }, // Travis Beaumont -> Libertarian
-            new { CharacterId = 17, BiasId = 12 }, // Travis Beaumont -> Populist
-            new { CharacterId = 18, BiasId = 16 }, // Katie Hendricks -> Libertarian
-            new { CharacterId = 18, BiasId = 5 },  // Katie Hendricks -> Pro-Government
+            new { CharacterId = 17, BiasId = 16 },// Travis Beaumont -> Libertarian
+            new { CharacterId = 17, BiasId = 12 },// Travis Beaumont -> Populist
+            new { CharacterId = 17, BiasId = 2 }, // Travis Beaumont -> Anti-Environment
+
+            new { CharacterId = 18, BiasId = 16 },// Katie Hendricks -> Libertarian
+            new { CharacterId = 18, BiasId = 5 }, // Katie Hendricks -> Pro-Government
 
             // Social Unity
-            new { CharacterId = 19, BiasId = 10 }, // Carlos Mendes -> Globalist
-            new { CharacterId = 19, BiasId = 17 }, // Carlos Mendes -> Socialist
-            new { CharacterId = 20, BiasId = 10 }, // Eleanor Hayes -> Globalist
-            new { CharacterId = 20, BiasId = 17 }, // Eleanor Hayes -> Socialist
+            new { CharacterId = 19, BiasId = 10 },// Carlos Mendes -> Globalist
+            new { CharacterId = 19, BiasId = 17 },// Carlos Mendes -> Socialist
+            new { CharacterId = 19, BiasId = 4 }, // Carlos Mendes -> Anti-Corporate
+
+            new { CharacterId = 20, BiasId = 10 },// Eleanor Hayes -> Globalist
+            new { CharacterId = 20, BiasId = 17 },// Eleanor Hayes -> Socialist
+            new { CharacterId = 20, BiasId = 4 }, // Eleanor Hayes -> Anti-Corporate
 
             // Daily Spectrum
-            new { CharacterId = 21, BiasId = 10 }, // David Blackwood -> Globalist
-            new { CharacterId = 21, BiasId = 7 },  // David Blackwood -> Pro-Science
-            new { CharacterId = 22, BiasId = 10 }, // Samantha Ortega -> Globalist
-            new { CharacterId = 22, BiasId = 7 },  // Samantha Ortega -> Pro-Science
+            new { CharacterId = 21, BiasId = 10 },// David Blackwood -> Globalist
+            new { CharacterId = 21, BiasId = 7 }, // David Blackwood -> Pro-Science
+            new { CharacterId = 22, BiasId = 10 },// Samantha Ortega -> Globalist
+            new { CharacterId = 22, BiasId = 7 }, // Samantha Ortega -> Pro-Science
 
             // Breaking Lens
-            new { CharacterId = 23, BiasId = 11 }, // Derek Malone -> Conspiracy-Minded
-            new { CharacterId = 23, BiasId = 12 }, // Derek Malone -> Populist
-            new { CharacterId = 24, BiasId = 11 }, // Jessica Vaughn -> Conspiracy-Minded
-            new { CharacterId = 24, BiasId = 12 }, // Jessica Vaughn -> Populist
+            new { CharacterId = 23, BiasId = 11 },// Derek Malone -> Conspiracy-Minded
+            new { CharacterId = 23, BiasId = 12 },// Derek Malone -> Populist
+            new { CharacterId = 24, BiasId = 11 },// Jessica Vaughn -> Conspiracy-Minded
+            new { CharacterId = 24, BiasId = 12 },// Jessica Vaughn -> Populist
 
             // Chronicle Insight
-            new { CharacterId = 25, BiasId = 7 },  // Raj Patel -> Pro-Science
-            new { CharacterId = 25, BiasId = 10 }, // Raj Patel -> Globalist
-            new { CharacterId = 26, BiasId = 7 },  // Melissa Cho -> Pro-Science
-            new { CharacterId = 26, BiasId = 10 }, // Melissa Cho -> Globalist
+            new { CharacterId = 25, BiasId = 7 }, // Raj Patel -> Pro-Science
+            new { CharacterId = 25, BiasId = 10 },// Raj Patel -> Globalist
+            new { CharacterId = 26, BiasId = 7 }, // Melissa Cho -> Pro-Science
+            new { CharacterId = 26, BiasId = 10 },// Melissa Cho -> Globalist
 
             // Green Vanguard
-            new { CharacterId = 27, BiasId = 1 },  // Elena Radcliffe -> Pro-Environment
-            new { CharacterId = 27, BiasId = 6 },  // Elena Radcliffe -> Anti-Government
-            new { CharacterId = 28, BiasId = 1 },  // Benjamin Holt -> Pro-Environment
-            new { CharacterId = 28, BiasId = 7 },  // Benjamin Holt -> Pro-Science
+            new { CharacterId = 27, BiasId = 1 }, // Elena Radcliffe -> Pro-Environment
+            new { CharacterId = 27, BiasId = 6 }, // Elena Radcliffe -> Anti-Government
+            new { CharacterId = 27, BiasId = 4 }, // Elena Radcliffe -> Anti-Corporate
+
+            new { CharacterId = 28, BiasId = 1 }, // Benjamin Holt -> Pro-Environment
+            new { CharacterId = 28, BiasId = 7 }, // Benjamin Holt -> Pro-Science
 
             // Parity Now!
-            new { CharacterId = 29, BiasId = 15 }, // Zoe Sanders -> Techno-Pessimist
-            new { CharacterId = 29, BiasId = 10 }, // Zoe Sanders -> Globalist
-            new { CharacterId = 30, BiasId = 10 }, // Maya Delgado -> Globalist
-            new { CharacterId = 30, BiasId = 17 }, // Maya Delgado -> Socialist
+            new { CharacterId = 29, BiasId = 15 },// Zoe Sanders -> Techno-Pessimist
+            new { CharacterId = 29, BiasId = 10 },// Zoe Sanders -> Globalist
+            new { CharacterId = 30, BiasId = 10 },// Maya Delgado -> Globalist
+            new { CharacterId = 30, BiasId = 17 },// Maya Delgado -> Socialist
 
             // Justice Impact
-            new { CharacterId = 31, BiasId = 10 }, // Liam Novak -> Globalist
-            new { CharacterId = 31, BiasId = 17 }, // Liam Novak -> Socialist
-            new { CharacterId = 32, BiasId = 5 },  // Olivia Tran -> Pro-Government
-            new { CharacterId = 32, BiasId = 7 },  // Olivia Tran -> Pro-Science
+            new { CharacterId = 31, BiasId = 10 },// Liam Novak -> Globalist
+            new { CharacterId = 31, BiasId = 17 },// Liam Novak -> Socialist
+            new { CharacterId = 32, BiasId = 5 }, // Olivia Tran -> Pro-Government
+            new { CharacterId = 32, BiasId = 7 }, // Olivia Tran -> Pro-Science
 
             // Order of the Silver Cross
-            new { CharacterId = 33, BiasId = 18 }, // Father Michael Graves -> Religious Fundamentalist
-            new { CharacterId = 33, BiasId = 5 },  // Father Michael Graves -> Pro-Government
-            new { CharacterId = 34, BiasId = 18 }, // Sister Angela Turner -> Religious Fundamentalist
-            new { CharacterId = 34, BiasId = 10 }, // Sister Angela Turner -> Globalist
+            new { CharacterId = 33, BiasId = 18 },// Father Michael Graves -> Religious Fundamentalist
+            new { CharacterId = 33, BiasId = 5 }, // Father Michael Graves -> Pro-Government
+            new { CharacterId = 34, BiasId = 18 },// Sister Angela Turner -> Religious Fundamentalist
+            new { CharacterId = 34, BiasId = 10 },// Sister Angela Turner -> Globalist
 
             // The Crescent Fellowship
-            new { CharacterId = 35, BiasId = 10 }, // Yusuf Al-Farid -> Globalist
-            new { CharacterId = 35, BiasId = 18 }, // Yusuf Al-Farid -> Religious Fundamentalist
-            new { CharacterId = 36, BiasId = 17 }, // Fatima Hassan -> Socialist
-            new { CharacterId = 36, BiasId = 10 }, // Fatima Hassan -> Globalist
+            new { CharacterId = 35, BiasId = 10 },// Yusuf Al-Farid -> Globalist
+            new { CharacterId = 35, BiasId = 18 },// Yusuf Al-Farid -> Religious Fundamentalist
+            new { CharacterId = 36, BiasId = 17 },// Fatima Hassan -> Socialist
+            new { CharacterId = 36, BiasId = 10 },// Fatima Hassan -> Globalist
 
             // Vanguard Institute of Innovation
-            new { CharacterId = 37, BiasId = 7 },  // Elliot West -> Pro-Science
-            new { CharacterId = 37, BiasId = 14 }, // Elliot West -> Techno-Optimist
-            new { CharacterId = 38, BiasId = 7 },  // Dr. Susan Caldwell -> Pro-Science
-            new { CharacterId = 38, BiasId = 14 }, // Dr. Susan Caldwell -> Techno-Optimist
+            new { CharacterId = 37, BiasId = 7 }, // Elliot West -> Pro-Science
+            new { CharacterId = 37, BiasId = 14 },// Elliot West -> Techno-Optimist
+            new { CharacterId = 38, BiasId = 7 }, // Dr. Susan Caldwell -> Pro-Science
+            new { CharacterId = 38, BiasId = 14 },// Dr. Susan Caldwell -> Techno-Optimist
 
             // Arclight Research Center
-            new { CharacterId = 39, BiasId = 1 },  // Martin Lowe -> Pro-Environment
-            new { CharacterId = 39, BiasId = 7 },  // Martin Lowe -> Pro-Science
-            new { CharacterId = 40, BiasId = 1 },  // Elena Fischer -> Pro-Environment
-            new { CharacterId = 40, BiasId = 14 }, // Elena Fischer -> Techno-Optimist
+            new { CharacterId = 39, BiasId = 1 }, // Martin Lowe -> Pro-Environment
+            new { CharacterId = 39, BiasId = 7 }, // Martin Lowe -> Pro-Science
+            new { CharacterId = 40, BiasId = 1 }, // Elena Fischer -> Pro-Environment
+            new { CharacterId = 40, BiasId = 14 },// Elena Fischer -> Techno-Optimist
 
             // Helios Institute of Space Studies
-            new { CharacterId = 41, BiasId = 7 },  // Dr. Alan Reyes -> Pro-Science
-            new { CharacterId = 41, BiasId = 14 }, // Dr. Alan Reyes -> Techno-Optimist
-            new { CharacterId = 42, BiasId = 7 },  // Sophia Kim -> Pro-Science
-            new { CharacterId = 42, BiasId = 14 }, // Sophia Kim -> Techno-Optimist
+            new { CharacterId = 41, BiasId = 7 }, // Dr. Alan Reyes -> Pro-Science
+            new { CharacterId = 41, BiasId = 14 },// Dr. Alan Reyes -> Techno-Optimist
+            new { CharacterId = 42, BiasId = 7 }, // Sophia Kim -> Pro-Science
+            new { CharacterId = 42, BiasId = 14 },// Sophia Kim -> Techno-Optimist
 
             // United Workers
-            new { CharacterId = 43, BiasId = 17 }, // Jack Mitchell -> Socialist
-            new { CharacterId = 43, BiasId = 10 }, // Jack Mitchell -> Globalist
-            new { CharacterId = 44, BiasId = 17 }, // Rebecca Lin -> Socialist
-            new { CharacterId = 44, BiasId = 12 }, // Rebecca Lin -> Populist
+            new { CharacterId = 43, BiasId = 17 },// Jack Mitchell -> Socialist
+            new { CharacterId = 43, BiasId = 10 },// Jack Mitchell -> Globalist
+            new { CharacterId = 43, BiasId = 4 }, // Jack Mitchell -> Anti-Corporate
+
+            new { CharacterId = 44, BiasId = 17 },// Rebecca Lin -> Socialist
+            new { CharacterId = 44, BiasId = 12 },// Rebecca Lin -> Populist
+            new { CharacterId = 44, BiasId = 4 }, // Rebecca Lin -> Anti-Corporate
 
             // Global Labor Federation
-            new { CharacterId = 45, BiasId = 17 }, // Hector Morales -> Socialist
-            new { CharacterId = 45, BiasId = 10 }, // Hector Morales -> Globalist
-            new { CharacterId = 46, BiasId = 17 }, // Maria Vasquez -> Socialist
-            new { CharacterId = 46, BiasId = 10 }, // Maria Vasquez -> Globalist
+            new { CharacterId = 45, BiasId = 17 },// Hector Morales -> Socialist
+            new { CharacterId = 45, BiasId = 10 },// Hector Morales -> Globalist
+            new { CharacterId = 45, BiasId = 4 }, // Hector Morales -> Anti-Corporate
+
+            new { CharacterId = 46, BiasId = 17 },// Maria Vasquez -> Socialist
+            new { CharacterId = 46, BiasId = 10 },// Maria Vasquez -> Globalist
+            new { CharacterId = 46, BiasId = 4 }, // Maria Vasquez -> Anti-Corporate
 
             // The Solidarity Movement
-            new { CharacterId = 47, BiasId = 17 }, // Jamal Edwards -> Socialist
-            new { CharacterId = 47, BiasId = 10 }, // Jamal Edwards -> Globalist
-            new { CharacterId = 48, BiasId = 17 }, // Hannah Weiss -> Socialist
-            new { CharacterId = 48, BiasId = 10 }, // Hannah Weiss -> Globalist
+            new { CharacterId = 47, BiasId = 17 },// Jamal Edwards -> Socialist
+            new { CharacterId = 47, BiasId = 10 },// Jamal Edwards -> Globalist
+            new { CharacterId = 47, BiasId = 4 }, // Jamal Edwards -> Anti-Corporate
+
+            new { CharacterId = 48, BiasId = 17 },// Hannah Weiss -> Socialist
+            new { CharacterId = 48, BiasId = 10 },// Hannah Weiss -> Globalist
+            new { CharacterId = 48, BiasId = 4 }, // Hannah Weiss -> Anti-Corporate
 
             // NeuraCore AI
-            new { CharacterId = 49, BiasId = 7 },  // Dr. Alan Voss -> Pro-Science
-            new { CharacterId = 49, BiasId = 14 }, // Dr. Alan Voss -> Techno-Optimist
-            new { CharacterId = 50, BiasId = 7 },  // Samantha Lin -> Pro-Science
-            new { CharacterId = 50, BiasId = 14 }, // Samantha Lin -> Techno-Optimist
+            new { CharacterId = 49, BiasId = 7 }, // Dr. Alan Voss -> Pro-Science
+            new { CharacterId = 49, BiasId = 14 },// Dr. Alan Voss -> Techno-Optimist
+            new { CharacterId = 50, BiasId = 7 }, // Samantha Lin -> Pro-Science
+            new { CharacterId = 50, BiasId = 14 },// Samantha Lin -> Techno-Optimist
 
             // SkyLink Systems
-            new { CharacterId = 51, BiasId = 7 },  // Ethan Caldwell -> Pro-Science
-            new { CharacterId = 51, BiasId = 14 }, // Ethan Caldwell -> Techno-Optimist
-            new { CharacterId = 52, BiasId = 7 },  // Nadia Blake -> Pro-Science
-            new { CharacterId = 52, BiasId = 14 }, // Nadia Blake -> Techno-Optimist
+            new { CharacterId = 51, BiasId = 7 }, // Ethan Caldwell -> Pro-Science
+            new { CharacterId = 51, BiasId = 14 },// Ethan Caldwell -> Techno-Optimist
+            new { CharacterId = 52, BiasId = 7 }, // Nadia Blake -> Pro-Science
+            new { CharacterId = 52, BiasId = 14 },// Nadia Blake -> Techno-Optimist
 
             // NimbusTech Innovations
-            new { CharacterId = 53, BiasId = 7 },  // Dr. Adrian Wells -> Pro-Science
-            new { CharacterId = 53, BiasId = 14 }, // Dr. Adrian Wells -> Techno-Optimist
-            new { CharacterId = 54, BiasId = 7 },  // Lisa Cooper -> Pro-Science
-            new { CharacterId = 54, BiasId = 14 }, // Lisa Cooper -> Techno-Optimist
+            new { CharacterId = 53, BiasId = 7 }, // Dr. Adrian Wells -> Pro-Science
+            new { CharacterId = 53, BiasId = 14 },// Dr. Adrian Wells -> Techno-Optimist
+            new { CharacterId = 54, BiasId = 7 }, // Lisa Cooper -> Pro-Science
+            new { CharacterId = 54, BiasId = 14 },// Lisa Cooper -> Techno-Optimist
 
             // ByteForge Labs
-            new { CharacterId = 55, BiasId = 7 },  // Cody Ramirez -> Pro-Science
-            new { CharacterId = 55, BiasId = 14 }, // Cody Ramirez -> Techno-Optimist
-            new { CharacterId = 56, BiasId = 7 },  // Tina Song -> Pro-Science
-            new { CharacterId = 56, BiasId = 14 }, // Tina Song -> Techno-Optimist
+            new { CharacterId = 55, BiasId = 7 }, // Cody Ramirez -> Pro-Science
+            new { CharacterId = 55, BiasId = 14 },// Cody Ramirez -> Techno-Optimist
+            new { CharacterId = 56, BiasId = 7 }, // Tina Song -> Pro-Science
+            new { CharacterId = 56, BiasId = 14 },// Tina Song -> Techno-Optimist
 
             // Lifeline Initiative
-            new { CharacterId = 57, BiasId = 10 }, // Daniel Harper -> Globalist
-            new { CharacterId = 57, BiasId = 17 }, // Daniel Harper -> Socialist
-            new { CharacterId = 58, BiasId = 10 }, // Olivia Bennett -> Globalist
-            new { CharacterId = 58, BiasId = 17 }, // Olivia Bennett -> Socialist
+            new { CharacterId = 57, BiasId = 10 },// Daniel Harper -> Globalist
+            new { CharacterId = 57, BiasId = 17 },// Daniel Harper -> Socialist
+            new { CharacterId = 58, BiasId = 10 },// Olivia Bennett -> Globalist
+            new { CharacterId = 58, BiasId = 17 },// Olivia Bennett -> Socialist
 
             // Hands Together
-            new { CharacterId = 59, BiasId = 10 }, // Margaret Dawson -> Globalist
-            new { CharacterId = 59, BiasId = 17 }, // Margaret Dawson -> Socialist
-            new { CharacterId = 60, BiasId = 10 }, // Omar Sinclair -> Globalist
-            new { CharacterId = 60, BiasId = 17 }, // Omar Sinclair -> Socialist
+            new { CharacterId = 59, BiasId = 10 },// Margaret Dawson -> Globalist
+            new { CharacterId = 59, BiasId = 17 },// Margaret Dawson -> Socialist
+            new { CharacterId = 60, BiasId = 10 },// Omar Sinclair -> Globalist
+            new { CharacterId = 60, BiasId = 17 },// Omar Sinclair -> Socialist
 
             // World Healing Foundation
-            new { CharacterId = 61, BiasId = 10 }, // Dr. Samuel Carter -> Globalist
-            new { CharacterId = 61, BiasId = 7 },  // Dr. Samuel Carter -> Pro-Science
-            new { CharacterId = 62, BiasId = 10 }, // Isabella Mendez -> Globalist
-            new { CharacterId = 62, BiasId = 17 }, // Isabella Mendez -> Socialist
-
-
+            new { CharacterId = 61, BiasId = 10 },// Dr. Samuel Carter -> Globalist
+            new { CharacterId = 61, BiasId = 7 }, // Dr. Samuel Carter -> Pro-Science
+            new { CharacterId = 62, BiasId = 10 },// Isabella Mendez -> Globalist
+            new { CharacterId = 62, BiasId = 17 } // Isabella Mendez -> Socialist
         };
+
 
         foreach (var cb in defaultCharacterBiases)
         {
