@@ -109,6 +109,27 @@ public class GameUIController : MonoBehaviour
         }
     }
 
+    private void OnTextUnclicked(PointerDownEvent evt, Label textLabel)
+    {
+        // Get the word that was unclicked
+        Vector2 localMousePosition = evt.localPosition;
+        string unclickedWord = GetWordAtPosition(textLabel, localMousePosition);
+
+        if (!string.IsNullOrEmpty(unclickedWord))
+        {
+            //int postId = (int)textLabel.userData;
+            int activeEventId = GameManager.instance.ActiveEventId;
+
+            wordsPlayerSelected.Remove(unclickedWord);
+            clickedWordsPerLabel[textLabel].Remove(unclickedWord);
+
+            // DatabaseManager.Instance.RemoveSelectedWord(activeEventId, postId, unclickedWord);
+
+            RemoveHighlight(textLabel, unclickedWord);
+        }
+    }
+
+
     private void OnDisable()
     {
         gameButtons.ForEach(b => b.UnregisterCallback<ClickEvent>(PlayClickSound));
@@ -251,8 +272,13 @@ public class GameUIController : MonoBehaviour
 
         if (!string.IsNullOrEmpty(clickedWord))
         {
+            // На кшталт цього. Треба глянути ще.
+            // int postId = (int)postText.userData;
+            int activeEventId = GameManager.instance.ActiveEventId;
             wordsPlayerSelected.Add(clickedWord);
             clickedWordsPerLabel[textLabel].Add(clickedWord);
+            // DatabaseManager.Instance.InsertSelectedWord(activeEventId, postId, clickedWord);
+
             HighlightWord(textLabel, clickedWord);
         }
     }
@@ -301,6 +327,17 @@ public class GameUIController : MonoBehaviour
 
         textLabel.text = highlightedText.Trim();
     }
+
+    private void RemoveHighlight(Label textLabel, string word)
+    {
+        string fullText = textLabel.text;
+
+        string unhighlightedText = fullText.Replace($"<color=yellow>{word}</color>", word);
+
+        textLabel.text = unhighlightedText;
+    }
+
+
     //buttons effects
     private void PlayClickSound(ClickEvent e)
     {

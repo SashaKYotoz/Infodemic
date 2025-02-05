@@ -53,6 +53,38 @@ public class DatabaseManager : MonoBehaviour
         Debug.Log("Database connection closed.");
     }
 
+    // In DatabaseManager.cs
+    public void InsertSelectedWord(int eventId, int postId, string word)
+    {
+        try
+        {
+            _connection.Insert(new SelectedWords
+            {
+                EventId = eventId,
+                PostId = postId,
+                Word = word
+            });
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Failed to add word: {e.Message}");
+        }
+    }
+
+    public void RemoveSelectedWord(int eventId, int postId, string word)
+    {
+        try
+        {
+            _connection.Execute(
+                "DELETE FROM SelectedWords WHERE EventId = ? AND PostId = ? AND Word = ?",
+                eventId, postId, word
+            );
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Failed to remove word: {e.Message}");
+        }
+    }
     public List<string> GetSelectedWordsForEvent(int eventId)
     {
         return _connection.Query<SelectedWords>(
