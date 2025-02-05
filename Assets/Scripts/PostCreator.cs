@@ -39,7 +39,6 @@ public class PostCreator
                 OrganizationId = sourceType == "Organization" ? entityId : (int?)null,
                 IsTruthful = post["isTruthful"].AsBool
             };
-
             _connection.Insert(newPost);
             UpdateLastUsed(eventId, sourceType, entityId);
             posts.Add(newPost);
@@ -107,7 +106,6 @@ public class PostCreator
                 if (character != null)
                 {
                     character.LastUsedEventId = eventId;
-                    Debug.Log(character.Name);
                     _connection.Update(character);
                 }
             }
@@ -117,7 +115,6 @@ public class PostCreator
                 if (org != null)
                 {
                     org.LastUsedEventId = eventId;
-                    Debug.Log(org.Name);
                     _connection.Update(org);
                 }
             }
