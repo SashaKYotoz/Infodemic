@@ -4,6 +4,7 @@ using System.Linq;
 using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
 public class GameUIController : MonoBehaviour
@@ -17,6 +18,8 @@ public class GameUIController : MonoBehaviour
 
     // Tabs
     private Button news, post, note, result;
+    // Widgets
+    private List<Button> exit, backToSource;
 
     // Labels in main panels
     private Label noteText, postText, aiNote, percentageOfCorrectness, percentageOfEnthusiasm;
@@ -72,11 +75,36 @@ public class GameUIController : MonoBehaviour
         post.RegisterCallback<ClickEvent>(callback => ChangeVisibility("postPanel", !post.ClassListContains("blocked-tab")));
         result.RegisterCallback<ClickEvent>(callback => ChangeVisibility("resultPanel", !result.ClassListContains("blocked-tab")));
 
+        root.Q<Button>("mainExit").RegisterCallback<ClickEvent>(QuitGame);
+
         gameButtons = root.Query<Button>().ToList();
         gameButtons.ForEach(b => b.RegisterCallback<ClickEvent>(PlayClickSound));
 
+        exit = root.Query<Button>(name: "exit").ToList();
+        exit.ForEach(b => b.RegisterCallback<ClickEvent>(callback => b.parent.parent.style.display = DisplayStyle.None));
+        backToSource = root.Query<Button>(name: "backToSource").ToList();
+        backToSource.ForEach(b => b.RegisterCallback<ClickEvent>(callback => ManageBackToSourceButtons(b)));
+
         RegisterBackButton(root);
         RegisterTextLabelCallbacks(root);
+    }
+    private void ManageBackToSourceButtons(Button b)
+    {
+        if (b.parent.parent == socialMedia)
+        {
+            socialMedia.style.display = DisplayStyle.None;
+            socialMediaPanel.style.display = DisplayStyle.Flex;
+        }
+        else
+        {
+            b.parent.parent.style.display = DisplayStyle.None;
+            sourcePanel.style.display = DisplayStyle.Flex;
+        }
+    }
+    private void QuitGame(ClickEvent e)
+    {
+        SceneManager.UnloadSceneAsync("Game");
+        SceneManager.LoadScene("Management");
     }
 
     private void RegisterBackButton(VisualElement root)
@@ -223,6 +251,8 @@ public class GameUIController : MonoBehaviour
                 textToPut.style.width = new StyleLength(new Length(100, LengthUnit.Percent));
                 textToPut.style.height = new StyleLength(new Length(20, LengthUnit.Percent));
                 textToPut.style.backgroundColor = new StyleColor(new Color(0.9f, 0.9f, 0.9f));
+
+                //TODO: handle gen of content to social media user | web article
                 textToPut.RegisterCallback<ClickEvent>(callback =>
                 {
                     (elementToPutContentIn.Equals("linksHolder") ? webArticle : socialMedia).style.display = DisplayStyle.Flex;
@@ -232,6 +262,16 @@ public class GameUIController : MonoBehaviour
             }
         }
     }
+    // Clicked words have to be added as a lists linked to specific event, 
+    // following class will foreach each event that has filled list and add instance of "originalAsset" to notePanel 
+
+    // VisualTreeAsset originalAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/GameUI.uxml");
+    // VisualElement holder = originalAsset.Instantiate().Q("newsHolder");
+    // holder.style.display = DisplayStyle.Flex;
+    // holder.style.flexShrink = 1;
+    // holder.style.flexGrow = 0;
+
+    // when clicked on folder("originalAsset"), player will see selected by its words and will able to select them for postPanel
     private void HandleNotePanel(ClickEvent e)
     {
         var root = document.rootVisualElement;
@@ -250,6 +290,7 @@ public class GameUIController : MonoBehaviour
             root.Q("notePanel").Add(textKeeper);
         }
     }
+
     public void ChangeVisibility(string panelName, bool condition)
     {
         var root = document.rootVisualElement;

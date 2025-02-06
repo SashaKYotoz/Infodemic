@@ -3,15 +3,17 @@ using SimpleJSON;
 using SQLite4Unity3d;
 using UnityEngine;
 
-public class PostCreator 
+public class PostCreator
 {
     private readonly SQLiteConnection _connection;
+
+    private readonly GameUIController gameUIController;
 
     public PostCreator(SQLiteConnection connection)
     {
         _connection = connection;
+        gameUIController = GameObject.Find("GameUI").GetComponent<GameUIController>();
     }
-
     public void CreateAndSavePosts(JSONNode eventJson, int eventId)
     {
         List<Posts> posts = new List<Posts>();
@@ -43,7 +45,6 @@ public class PostCreator
             UpdateLastUsed(eventId, sourceType, entityId);
             posts.Add(newPost);
         }
-        GameUIController gameUIController = GameObject.Find("GameUI").GetComponent<GameUIController>();
         gameUIController.StartContent(posts);
     }
 

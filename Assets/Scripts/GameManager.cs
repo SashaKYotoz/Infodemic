@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using System.Data.Common;
-using UnityEditor;
 using UnityEngine;
 
 public class GameManager : MonoBehaviour

@@ -50,7 +50,6 @@
     width: 50%;
     background-color: rgb(30, 30, 30);
     color: white;
-    padding: 20px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -122,8 +121,17 @@
     color: orange;
     font-weight: bold;
 }
+
 #newsPanel {
     flex-wrap: wrap;
     overflow: hidden;
     justify-content: flex-start;
+}
+
+.widget {
+}
+
+.widget:hover {
+    background-color: rgba(255, 255, 255, 0.59);
+    -unity-background-image-tint-color: rgb(180, 180, 180);
 }

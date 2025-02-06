@@ -94,7 +94,6 @@ public class SettingsManager : MonoBehaviour
         mainMenu.style.backgroundSize = new StyleBackgroundSize(new BackgroundSize(new Length(200, LengthUnit.Percent), new Length(200, LengthUnit.Percent)));
         mainMenu.style.color = endColor;
         SceneManager.LoadScene("Game");
-        SceneManager.UnloadSceneAsync("Management");
     }
 
     private void PlaySound()
