@@ -14,8 +14,6 @@ public class DatabaseManager : MonoBehaviour
 
     public static DatabaseManager Instance => _instance;
     public SQLiteConnection Connection => _connection;
-    private PostCreator _postCreator;
-
     private void Awake()
     {
         if (_instance != null && _instance != this)
@@ -28,11 +26,6 @@ public class DatabaseManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
 
         InitializeDatabase();
-    }
-
-    private void Start()
-    {
-        _postCreator = new PostCreator(_connection);
     }
 
     private void InitializeDatabase()
@@ -90,29 +83,7 @@ public class DatabaseManager : MonoBehaviour
 
     public WordFolders GetFolderForEvent(int eventId) => _connection.Find<WordFolders>(eventId);
 
-    public void SaveEventData(string jsonResponse, int eventTypeId)
-    {
-        var json = JSON.Parse(jsonResponse);
-        var eventData = json["choices"][0]["message"]["content"];
-        var eventJson = JSON.Parse(eventData);
-
-        // Save event
-        var newEvent = new Events
-        {
-            Title = eventJson["title"],
-            Description = eventJson["description"],
-            GeneratedContent = eventJson["generatedContent"].ToString(),
-            CoreTruth = eventJson["coreTruth"].ToString(),
-            EventTypeId = eventTypeId
-        };
-        _connection.Insert(newEvent);
-
-        GameManager.instance.SetActiveEventId(newEvent.Id);
-        // Save posts
-        _postCreator.CreateAndSavePosts(eventJson, newEvent.Id);
-
-        Debug.Log("Event and posts saved successfully!");
-    }
+    
 
     public Media GetMedia(int mediaId)
     {

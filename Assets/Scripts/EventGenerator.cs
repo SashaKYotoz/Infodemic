@@ -17,11 +17,13 @@ public class EventGenerator : MonoBehaviour
 
     private SQLiteConnection _connection;
 
+    private PostCreator _postCreator;
     private void Start()
     {
         _connection = DatabaseManager.Instance.Connection;
 
 
+        _postCreator = new PostCreator(_connection);
 
         //StartCoroutine(GenerateEvent());
     }
@@ -148,7 +150,7 @@ Validation Rules:
             Debug.Log("Raw API Response: " + jsonResponse);
             try
             {
-                DatabaseManager.Instance.SaveEventData(jsonResponse, eventType.Id);
+                SaveEventData(jsonResponse, eventType.Id);
 
             }
             catch
@@ -163,6 +165,32 @@ Validation Rules:
         }
     }
 
+
+    public void SaveEventData(string jsonResponse, int eventTypeId)
+    {
+        var json = JSON.Parse(jsonResponse);
+        var eventData = json["choices"][0]["message"]["content"];
+        var eventJson = JSON.Parse(eventData);
+
+        // Save event
+        var newEvent = new Events
+        {
+            Title = eventJson["title"],
+            Description = eventJson["description"],
+            GeneratedContent = eventJson["generatedContent"].ToString(),
+            CoreTruth = eventJson["coreTruth"].ToString(),
+            EventTypeId = eventTypeId
+        };
+        _connection.Insert(newEvent);
+
+        GameManager.instance.SetActiveEventId(newEvent.Id);
+        // Save posts
+        _postCreator.CreateAndSavePosts(eventJson, newEvent.Id);
+
+
+        CreateNewFolderForEvent(newEvent.Title, newEvent.Description, newEvent.Id);
+        Debug.Log("Event and posts saved successfully!");
+    }
     public void CreateNewFolderForEvent(string folderName, string folderDescription, int eventId)
     {
         WordFolders newFolder = new WordFolders
