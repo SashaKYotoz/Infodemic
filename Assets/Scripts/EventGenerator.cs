@@ -16,12 +16,12 @@ public class EventGenerator : MonoBehaviour
     private string apiKey = "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";
 
     private SQLiteConnection _connection;
-    public PostCreator postCreator;
+
     private void Start()
     {
         _connection = DatabaseManager.Instance.Connection;
 
-        postCreator = new PostCreator(_connection);
+
 
         StartCoroutine(GenerateEvent());
     }
@@ -146,11 +146,19 @@ Validation Rules:
         {
             string jsonResponse = request.downloadHandler.text;
             Debug.Log("Raw API Response: " + jsonResponse);
-            SaveEventData(jsonResponse, eventType.Id);
+            try
+            {
+                DatabaseManager.Instance.SaveEventData(jsonResponse, eventType.Id);
+            }
+            catch
+            {
+                StartCoroutine(GenerateEvent());
+            }
         }
         else
         {
             Debug.LogError("Error with Hugging Face API: " + request.error + "\nResponse: " + request.downloadHandler.text);
+            StartCoroutine(GenerateEvent());
         }
     }
 
@@ -163,29 +171,6 @@ Validation Rules:
             .Replace("\n", "\\n")   // Escape newlines
             .Replace("\r", "\\r")   // Escape carriage returns
             .Replace("\t", "\\t");  // Escape tabs
-    }
-
-    private void SaveEventData(string jsonResponse, int eventTypeId)
-    {
-        var json = JSON.Parse(jsonResponse);
-        var eventData = json["choices"][0]["message"]["content"];
-        var eventJson = JSON.Parse(eventData);
-
-        // Save event
-        var newEvent = new Events
-        {
-            Title = eventJson["title"],
-            Description = eventJson["description"],
-            GeneratedContent = eventJson["generatedContent"].ToString(),
-            CoreTruth = eventJson["coreTruth"].ToString(),
-            EventTypeId = eventTypeId
-        };
-        _connection.Insert(newEvent);
-
-        // Save posts
-        postCreator.CreateAndSavePosts(eventJson, newEvent.Id);
-
-        Debug.Log("Event and posts saved successfully!");
     }
 
 }

@@ -44,8 +44,9 @@ public class ArticleGenerator : MonoBehaviour
         string organizationsInfo = string.Join("\n", organizations.Select(o => $"{o.Name} (Type: {DatabaseManager.Instance.GetOrganizationType(o.TypeId)}) - Credibility: {o.Credibility}"));
 
         string prompt = $@"
-You are a journalist writing an article for a news media outlet. Your goal is to construct a coherent and engaging news article based on the following event:
-Event {activeEvent.Title}
+You are a journalist writing an article for a news media outlet. Your goal is to construct a coherent and engaging news article based on the following event and evaluate the reliability of the information provided by the player's selected key phrases.
+
+Event: {activeEvent.Title}
 
 Participating Characters:
 {charactersInfo}
@@ -53,27 +54,34 @@ Participating Characters:
 Participating Organizations:
 {organizationsInfo}
 
-Core truth: {activeEvent.CoreTruth}
+Core Truth:
+{activeEvent.CoreTruth}
 
 Original Posts:
 {postsText}
 
-The player has selected the following key phrases from posts:
+The player has selected the following key phrases from the posts:
 ""{selectedWordsText}""
 
-Validation Rules:
-- Use ALL selected key phrases naturally.
-- Reference details from original posts, characters, and organizations.
-- Follow a journalistic structure: Headline, Introduction, Main Body, Conclusion.
-- Do NOT add extra facts beyond what is provided.
-- Maintain an appropriate tone.
+Before writing the article, analyze the selected key phrases:
+- Verify that each selected phrase is supported by the core truth and details from the original posts.
+- Identify if any selected phrases are contradictory or if the player has selected too many phrases.
+- Provide an overall assessment of the veracity of the selected information on a scale of 1 (very unreliable) to 10 (completely reliable). This score will be used to determine the player's reward or demotion.
 
-Output JSON format:
+Then, construct the article ensuring:
+- ALL selected key phrases are used naturally in the text.
+- Details from original posts, characters, and organizations are referenced appropriately.
+- The article follows a journalistic structure: Headline, Introduction, Main Body, Conclusion.
+- No extra facts beyond those provided are added.
+- The tone remains appropriate to the event's context.
+
+Finally, output the result in the following JSON format:
 {{
     ""title"": ""Generated article title"",
-    ""content"": ""Full article text.""
+    ""content"": ""Full article text."",
+    ""veracityScore"": ""(a float from 1 to 10 indicating reliability)""
 }}
-        ";
+";
 
         prompt = EscapeJsonString(prompt);
         Debug.Log(prompt);
@@ -106,11 +114,44 @@ Output JSON format:
         {
             string jsonResponse = request.downloadHandler.text;
             Debug.Log("ARTICLE: Raw API Response: " + jsonResponse);
+
+            var json = JSON.Parse(jsonResponse);
+            var articleData = json["choices"][0]["message"]["content"];
+            var articleJson = JSON.Parse(articleData);
+
+            // Create Article
+            var newArticle = new Articles
+            {
+                MediaId = 1,
+                EventId = GameManager.instance.ActiveEventId,
+                Title = articleJson["title"],
+                Content = articleJson["content"],
+                VeracityScore = articleJson["veracityScore"]
+            };
+            DatabaseManager.Instance.SaveArticle(newArticle);
+
+            ChangeReputationLevel(newArticle);
         }
         else
         {
             Debug.LogError("ARTICLE: Error with Hugging Face API: " + request.error + "\nResponse: " + request.downloadHandler.text);
+            StartCoroutine(GenerateArticle());
         }
+    }
+
+    private void ChangeReputationLevel(Articles article)
+    {
+        var media = DatabaseManager.Instance.GetMedia(article.MediaId);
+
+        float baseline = 5f;
+        float factor = 0.1f; // This factor determines how much the veracity score shifts credibility.
+        float deltaCredibility = (article.VeracityScore - baseline) * factor;
+
+        media.Credibility = Mathf.Clamp(media.Credibility + deltaCredibility, 1f, 10f);
+
+        _connection.Update(media);
+
+        Debug.Log($"Media updated. New Credibility: {media.Credibility}, New Readers: {media.Readers}");
     }
 
     private string EscapeJsonString(string input)

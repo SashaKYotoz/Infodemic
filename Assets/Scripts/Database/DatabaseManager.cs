@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Unity.VisualScripting;
+using SimpleJSON;
 
 public class DatabaseManager : MonoBehaviour
 {
@@ -12,6 +14,7 @@ public class DatabaseManager : MonoBehaviour
 
     public static DatabaseManager Instance => _instance;
     public SQLiteConnection Connection => _connection;
+    private PostCreator _postCreator;
 
     private void Awake()
     {
@@ -25,6 +28,11 @@ public class DatabaseManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
 
         InitializeDatabase();
+    }
+
+    private void Start()
+    {
+        _postCreator = new PostCreator(_connection);
     }
 
     private void InitializeDatabase()
@@ -65,11 +73,55 @@ public class DatabaseManager : MonoBehaviour
                 Word = word
             });
         }
-        catch (System.Exception e)
+        catch (Exception e)
         {
             Debug.LogError($"Failed to add word: {e.Message}");
         }
     }
+
+    public void SaveArticle(Articles newArticle)
+    {
+        _connection.Insert(newArticle);
+        Debug.Log("Player's article generated successfully");
+    }
+
+
+    public void SaveEventData(string jsonResponse, int eventTypeId)
+    {
+        var json = JSON.Parse(jsonResponse);
+        var eventData = json["choices"][0]["message"]["content"];
+        var eventJson = JSON.Parse(eventData);
+
+        // Save event
+        var newEvent = new Events
+        {
+            Title = eventJson["title"],
+            Description = eventJson["description"],
+            GeneratedContent = eventJson["generatedContent"].ToString(),
+            CoreTruth = eventJson["coreTruth"].ToString(),
+            EventTypeId = eventTypeId
+        };
+        _connection.Insert(newEvent);
+
+        // Save posts
+        _postCreator.CreateAndSavePosts(eventJson, newEvent.Id);
+
+        Debug.Log("Event and posts saved successfully!");
+    }
+
+    public Media GetMedia(int mediaId) {
+        return _connection.Find<Media>(mediaId);
+    }
+
+    public float GetMediaReputation(int mediaId)
+    {
+        var media = _connection.Find<Media>(mediaId);
+        if (media != null)
+            return media.Credibility;
+        else
+            return 0f;
+    }
+
 
     public void RemoveSelectedWord(int eventId, int postId, string word)
     {
@@ -80,7 +132,7 @@ public class DatabaseManager : MonoBehaviour
                 eventId, postId, word
             );
         }
-        catch (System.Exception e)
+        catch (Exception e)
         {
             Debug.LogError($"Failed to remove word: {e.Message}");
         }
@@ -211,6 +263,7 @@ public class DatabaseManager : MonoBehaviour
                 Id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                 Name TEXT,
                 Description TEXT,
+                Readers INTEGER,
                 Credibility REAL CHECK(Credibility BETWEEN 1 AND 10)
             );");
 

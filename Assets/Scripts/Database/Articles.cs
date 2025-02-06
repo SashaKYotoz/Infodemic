@@ -5,9 +5,9 @@ public class Articles
     [PrimaryKey, AutoIncrement]
     public int Id { get; set; }
     public int MediaId { get; set; }
-    public string EventId { get; set; }
+    public int EventId { get; set; }
     public string Title { get; set; }
     public string Content { get; set; }
-    public float AccuracyScore { get; set; }
+    public float VeracityScore { get; set; }
     public string CretedAt { get; set; }
 }
