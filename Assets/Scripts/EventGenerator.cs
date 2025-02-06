@@ -23,17 +23,17 @@ public class EventGenerator : MonoBehaviour
 
 
 
-        StartCoroutine(GenerateEvent());
+        //StartCoroutine(GenerateEvent());
     }
 
-    // private void Update()
-    // {
-    //     if (Keyboard.current.spaceKey.wasPressedThisFrame)
-    //     {
-    //         Debug.Log("Generating event...");
-    //         StartCoroutine(GenerateEvent());
-    //     }
-    // }
+    private void Update()
+    {
+        if (Keyboard.current.spaceKey.wasPressedThisFrame)
+        {
+            Debug.Log("Generating event...");
+            StartCoroutine(GenerateEvent());
+        }
+    }
 
     public IEnumerator GenerateEvent()
     {
@@ -149,6 +149,7 @@ Validation Rules:
             try
             {
                 DatabaseManager.Instance.SaveEventData(jsonResponse, eventType.Id);
+
             }
             catch
             {
@@ -160,6 +161,18 @@ Validation Rules:
             Debug.LogError("Error with Hugging Face API: " + request.error + "\nResponse: " + request.downloadHandler.text);
             StartCoroutine(GenerateEvent());
         }
+    }
+
+    public void CreateNewFolderForEvent(string folderName, string folderDescription, int eventId)
+    {
+        WordFolders newFolder = new WordFolders
+        {
+            EventId = eventId,
+            FolderName = folderName,
+            FolderDescription = folderDescription
+        };
+
+        DatabaseManager.Instance.CreateWordFolder(newFolder);
     }
 
     // Helper method to escape JSON strings

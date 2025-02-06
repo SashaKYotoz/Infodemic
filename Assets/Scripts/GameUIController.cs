@@ -68,6 +68,21 @@ public class GameUIController : MonoBehaviour
         percentageOfEnthusiasm = root.Q<Label>("percentageOfEnthusiasm");
     }
 
+
+    private void Start()
+    {
+        int activeEventId = GameManager.instance.ActiveEventId;
+        Debug.Log($"Active event id: {activeEventId}");
+        if (activeEventId != 0)
+        {
+            Debug.Log("Initializated");
+            List<Posts> postsToShow = DatabaseManager.Instance.GetPostsForEvent(activeEventId);
+            StartContent(postsToShow);
+
+            LoadFolders();
+        }
+    }
+
     private void RegisterCallbacks(VisualElement root)
     {
         note.RegisterCallback<ClickEvent>(HandleNotePanel);
@@ -145,13 +160,15 @@ public class GameUIController : MonoBehaviour
 
         if (!string.IsNullOrEmpty(unclickedWord))
         {
-            //int postId = (int)textLabel.userData;
-            int activeEventId = GameManager.instance.ActiveEventId;
+
+            // !!! Control, if all right.
+            int postId = (int)textLabel.userData;
+            int activeEventId = GameManager.instance.ActiveEventId; // use activeEventId instead of folderId for now
 
             wordsPlayerSelected.Remove(unclickedWord);
             clickedWordsPerLabel[textLabel].Remove(unclickedWord);
 
-            // DatabaseManager.Instance.RemoveSelectedWord(activeEventId, postId, unclickedWord);
+            DatabaseManager.Instance.RemoveSelectedWord(activeEventId, postId, unclickedWord);
 
             RemoveHighlight(textLabel, unclickedWord);
         }
@@ -169,6 +186,8 @@ public class GameUIController : MonoBehaviour
 
     public void StartContent(List<Posts> postsToShow)
     {
+
+        //TODO: Add ID to post.userData!!!
         foreach (Posts post in postsToShow)
         {
             bool randomBoolean = MathUtils.RandomBoolean();
@@ -192,7 +211,6 @@ public class GameUIController : MonoBehaviour
         holder.style.display = DisplayStyle.Flex;
         holder.style.flexShrink = 1;
         holder.style.flexGrow = 0;
-
         if (randomBoolean)
         {
             holder.style.width = holder.style.maxWidth = holder.style.minWidth = new StyleLength(new Length(50, LengthUnit.Percent));
@@ -313,7 +331,8 @@ public class GameUIController : MonoBehaviour
 
         if (!string.IsNullOrEmpty(clickedWord))
         {
-            // На кшталт цього. Треба глянути ще.
+
+            // We need to put userData into postText before
             // int postId = (int)postText.userData;
             int activeEventId = GameManager.instance.ActiveEventId;
             wordsPlayerSelected.Add(clickedWord);
@@ -347,6 +366,7 @@ public class GameUIController : MonoBehaviour
         return "";
     }
 
+
     private void HighlightWord(Label textLabel, string word)
     {
         string fullText = textLabel.text;
@@ -376,6 +396,51 @@ public class GameUIController : MonoBehaviour
         string unhighlightedText = fullText.Replace($"<color=yellow>{word}</color>", word);
 
         textLabel.text = unhighlightedText;
+    }
+
+    public void LoadFolders()
+    {
+        //int activeEventId = GameManager.instance.ActiveEventId;
+        //List<WordFolders> folders = DatabaseManager.Instance.GetFoldersForEvent(activeEventId);
+
+
+        
+        //TODO: GIVE A LOOK AND ADJUST
+        VisualElement folderListPanel = document.rootVisualElement.Q("folderListPanel");
+        folderListPanel.Clear(); // Clear previous items
+
+        List<WordFolders> folders = DatabaseManager.Instance.GetFolders();
+
+        foreach (WordFolders folder in folders)
+        {
+            Button folderButton = new Button();
+            folderButton.text = folder.FolderName;
+            folderButton.userData = folder.Id;
+
+            // When clicked, set this folder as active.
+            folderButton.RegisterCallback<ClickEvent>(evt =>
+            {
+                LoadSelectedWordsForFolder(folder.Id);
+            });
+
+            folderListPanel.Add(folderButton);
+        }
+    }
+
+    private void LoadSelectedWordsForFolder(int folderId)
+    {
+        // Retrieve selected words for this folder from the DB.
+        List<SelectedWords> words = DatabaseManager.Instance.GetSelectedWordsForFolder(folderId);
+
+        // ADJUST IT TO YOURSELF
+        VisualElement selectedWordsPanel = document.rootVisualElement.Q("selectedWordsPanel");
+        selectedWordsPanel.Clear();
+
+        foreach (SelectedWords sw in words)
+        {
+            Label wordLabel = new Label(sw.Word);
+            selectedWordsPanel.Add(wordLabel);
+        }
     }
 
 

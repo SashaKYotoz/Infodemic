@@ -27,7 +27,9 @@ public class ArticleGenerator : MonoBehaviour
         int activeEventId = GameManager.instance.ActiveEventId;
         Events activeEvent = _connection.Find<Events>(activeEventId);
 
-        List<string> selectedWords = DatabaseManager.Instance.GetSelectedWordsForEvent(activeEventId);
+
+        // Folder ID is the same as event one, for now
+        List<SelectedWords> selectedWords = DatabaseManager.Instance.GetSelectedWordsForFolder(activeEventId);
         string selectedWordsText = string.Join(", ", selectedWords);
 
         List<Posts> eventPosts = DatabaseManager.Instance.GetPostsForEvent(activeEventId);

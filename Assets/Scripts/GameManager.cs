@@ -9,6 +9,14 @@ public class GameManager : MonoBehaviour
     private EventGenerator _eventGenerator;
     public static GameManager instance;
 
+
+    public void SetActiveEventId(int eventId)
+    {
+        _activeEventId = eventId;
+        PlayerPrefs.SetInt("ActiveEventID", _activeEventId);
+        PlayerPrefs.Save();
+    }
+    
     private void Awake()
     {
         _dbManager = gameObject.AddComponent<DatabaseManager>();
@@ -41,8 +49,8 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    public void SaveGeneratedWords(SelectedWords selectedWords)
+    public void InsertSelectedWord(SelectedWords selectedWords)
     {
-        _dbManager.SaveSelectedWords(selectedWords);
+        _dbManager.InsertSelectedWord(selectedWords);
     }
 }

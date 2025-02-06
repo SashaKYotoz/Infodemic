@@ -62,13 +62,13 @@ public class DatabaseManager : MonoBehaviour
     }
 
     // In DatabaseManager.cs
-    public void InsertSelectedWord(int eventId, int postId, string word)
+    public void InsertSelectedWord(int folderId, int postId, string word)
     {
         try
         {
             _connection.Insert(new SelectedWords
             {
-                EventId = eventId,
+                FolderId = folderId,
                 PostId = postId,
                 Word = word
             });
@@ -85,6 +85,10 @@ public class DatabaseManager : MonoBehaviour
         Debug.Log("Player's article generated successfully");
     }
 
+
+    public void CreateWordFolder(WordFolders folder) => _connection.Insert(folder);
+
+    public WordFolders GetFolderForEvent(int eventId) => _connection.Find<WordFolders>(eventId);
 
     public void SaveEventData(string jsonResponse, int eventTypeId)
     {
@@ -103,13 +107,15 @@ public class DatabaseManager : MonoBehaviour
         };
         _connection.Insert(newEvent);
 
+        GameManager.instance.SetActiveEventId(newEvent.Id);
         // Save posts
         _postCreator.CreateAndSavePosts(eventJson, newEvent.Id);
 
         Debug.Log("Event and posts saved successfully!");
     }
 
-    public Media GetMedia(int mediaId) {
+    public Media GetMedia(int mediaId)
+    {
         return _connection.Find<Media>(mediaId);
     }
 
@@ -123,13 +129,13 @@ public class DatabaseManager : MonoBehaviour
     }
 
 
-    public void RemoveSelectedWord(int eventId, int postId, string word)
+    public void RemoveSelectedWord(int folderId, int postId, string word)
     {
         try
         {
             _connection.Execute(
-                "DELETE FROM SelectedWords WHERE EventId = ? AND PostId = ? AND Word = ?",
-                eventId, postId, word
+                "DELETE FROM SelectedWords WHERE FolderId = ? AND PostId = ? AND Word = ?",
+                folderId, postId, word
             );
         }
         catch (Exception e)
@@ -137,13 +143,15 @@ public class DatabaseManager : MonoBehaviour
             Debug.LogError($"Failed to remove word: {e.Message}");
         }
     }
-    public List<string> GetSelectedWordsForEvent(int eventId)
+    public List<SelectedWords> GetSelectedWordsForFolder(int folderId)
     {
         return _connection.Query<SelectedWords>(
-            "SELECT Word FROM SelectedWords WHERE EventId = ?", eventId
-        ).Select(w => w.Word).ToList();
+            "SELECT * FROM SelectedWords WHERE FolderId = ?", folderId
+        ).ToList();
     }
 
+    public List<WordFolders> GetFolders() => _connection.Table<WordFolders>().ToList();
+    
     public List<Posts> GetPostsForEvent(int eventId)
     {
         return _connection.Query<Posts>(
@@ -280,12 +288,21 @@ public class DatabaseManager : MonoBehaviour
                 FOREIGN KEY (EventId) REFERENCES Events(Id)
             );");
         _connection.Execute(@"
-            CREATE TABLE IF NOT EXISTS SelectedWords(
+            CREATE TABLE IF NOT EXISTS WordFolders(
                 Id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                 EventId INTEGER NOT NULL,
+                FolderName TEXT,
+                FolderDescription TEXT,
+                FOREIGN KEY (EventId) REFERENCES Events(Id)
+            )
+        ");
+        _connection.Execute(@"
+            CREATE TABLE IF NOT EXISTS SelectedWords(
+                Id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                FolderId INTEGER NOT NULL,
                 PostId INTEGER NOT NULL,
                 Word TEXT,
-                FOREIGN KEY (EventId) REFERENCES Events(Id),
+                FOREIGN KEY (FolderId) REFERENCES WordFolders(Id),
                 FOREIGN KEY (PostId) REFERENCES Posts(Id)
             )
         ");
@@ -399,7 +416,7 @@ public class DatabaseManager : MonoBehaviour
 
 
 
-    public void SaveSelectedWords(SelectedWords selectedWord)
+    public void InsertSelectedWord(SelectedWords selectedWord)
     {
         _connection.Insert(selectedWord);
     }
