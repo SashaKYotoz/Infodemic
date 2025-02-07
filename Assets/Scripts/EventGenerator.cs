@@ -18,7 +18,7 @@ public class EventGenerator : MonoBehaviour
     private SQLiteConnection _connection;
 
     private PostCreator _postCreator;
-    private void Start()
+    private void Awake()
     {
         _connection = DatabaseManager.Instance.Connection;
 
