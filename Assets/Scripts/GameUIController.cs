@@ -22,7 +22,7 @@ public class GameUIController : MonoBehaviour
     private List<Button> exit, backToSource;
 
     // Labels in main panels
-    private Label noteText, postText, aiNote, percentageOfCorrectness, percentageOfEnthusiasm;
+    private Label postText, aiNote, percentageOfCorrectness, percentageOfEnthusiasm;
 
     private List<Button> gameButtons = new List<Button>();
     private List<string> wordsPlayerSelected = new List<string>();
@@ -61,7 +61,6 @@ public class GameUIController : MonoBehaviour
 
     private void InitializeLabels(VisualElement root)
     {
-        noteText = root.Q<Label>("noteText");
         postText = root.Q<Label>("postText");
         aiNote = root.Q<Label>("aiNote");
         percentageOfCorrectness = root.Q<Label>("percentageOfCorrectness");
@@ -85,7 +84,7 @@ public class GameUIController : MonoBehaviour
 
     private void RegisterCallbacks(VisualElement root)
     {
-        note.RegisterCallback<ClickEvent>(HandleNotePanel);
+        note.RegisterCallback<ClickEvent>(callback => ChangeVisibility("notePanel", !note.ClassListContains("blocked-tab")));
         news.RegisterCallback<ClickEvent>(callback => ChangeVisibility("newsPanel", true));
         post.RegisterCallback<ClickEvent>(callback => ChangeVisibility("postPanel", !post.ClassListContains("blocked-tab")));
         result.RegisterCallback<ClickEvent>(callback => ChangeVisibility("resultPanel", !result.ClassListContains("blocked-tab")));
@@ -178,7 +177,7 @@ public class GameUIController : MonoBehaviour
     private void OnDisable()
     {
         gameButtons.ForEach(b => b.UnregisterCallback<ClickEvent>(PlayClickSound));
-        note.RegisterCallback<ClickEvent>(HandleNotePanel);
+        note.RegisterCallback<ClickEvent>(callback => ChangeVisibility("notePanel", !note.ClassListContains("blocked-tab")));
         news.RegisterCallback<ClickEvent>(callback => ChangeVisibility("newsPanel", true));
         post.RegisterCallback<ClickEvent>(callback => ChangeVisibility("postPanel", !post.ClassListContains("blocked-tab")));
         result.RegisterCallback<ClickEvent>(callback => ChangeVisibility("resultPanel", !result.ClassListContains("blocked-tab")));
@@ -192,6 +191,7 @@ public class GameUIController : MonoBehaviour
         {
             bool randomBoolean = MathUtils.RandomBoolean();
             VisualElement fillableNewsHolder = CreateNewsHolder(randomBoolean);
+            fillableNewsHolder.userData = GameManager.instance.ActiveEventId;
 
             Label newsTitleText = new() { text = provacativeWords[UnityEngine.Random.Range(0, provacativeWords.Length)], style = { fontSize = 32 } };
             fillableNewsHolder.Q("newsPictureHolder").Add(newsTitleText);
@@ -256,7 +256,7 @@ public class GameUIController : MonoBehaviour
     private void ChangeDisplayOfPanel(VisualElement element, [AllowsNull] string elementToPutContentIn, Posts post)
     {
         element.style.display = DisplayStyle.Flex;
-        if (elementToPutContentIn != null)
+        if (elementToPutContentIn != null && (elementToPutContentIn.Equals("linksHolder") ? webArticle : socialMedia).style.display == DisplayStyle.None)
         {
             VisualElement element1 = document.rootVisualElement.Q(elementToPutContentIn);
             if (element1 is ListView listView)
@@ -278,34 +278,6 @@ public class GameUIController : MonoBehaviour
                 });
                 listView.hierarchy.Add(textToPut);
             }
-        }
-    }
-    // Clicked words have to be added as a lists linked to specific event, 
-    // following class will foreach each event that has filled list and add instance of "originalAsset" to notePanel 
-
-    // VisualTreeAsset originalAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/GameUI.uxml");
-    // VisualElement holder = originalAsset.Instantiate().Q("newsHolder");
-    // holder.style.display = DisplayStyle.Flex;
-    // holder.style.flexShrink = 1;
-    // holder.style.flexGrow = 0;
-
-    // when clicked on folder("originalAsset"), player will see selected by its words and will able to select them for postPanel
-    private void HandleNotePanel(ClickEvent e)
-    {
-        var root = document.rootVisualElement;
-        if (!note.ClassListContains("blocked-tab"))
-        {
-            ChangeVisibility("notePanel", true);
-            Label textKeeper = new Label();
-            textKeeper.style.width = new StyleLength(new Length(100, LengthUnit.Percent));
-            textKeeper.style.height = new StyleLength(new Length(100, LengthUnit.Percent));
-            textKeeper.style.fontSize = 24;
-            textKeeper.style.color = Color.white;
-            foreach (string s in wordsPlayerSelected)
-            {
-                textKeeper.text += string.Format("{0} {1}", textKeeper.text.Count() % 34 == 0 ? "\n" : "\t", s);
-            }
-            root.Q("notePanel").Add(textKeeper);
         }
     }
 
@@ -331,15 +303,21 @@ public class GameUIController : MonoBehaviour
 
         if (!string.IsNullOrEmpty(clickedWord))
         {
+            if (!wordsPlayerSelected.Contains(clickedWord))
+            {
+                // We need to put userData into postText before
+                // int postId = (int)postText.userData;
+                int activeEventId = GameManager.instance.ActiveEventId;
+                wordsPlayerSelected.Add(clickedWord);
+                clickedWordsPerLabel[textLabel].Add(clickedWord);
+                // DatabaseManager.Instance.InsertSelectedWord(activeEventId, postId, clickedWord);
 
-            // We need to put userData into postText before
-            // int postId = (int)postText.userData;
-            int activeEventId = GameManager.instance.ActiveEventId;
-            wordsPlayerSelected.Add(clickedWord);
-            clickedWordsPerLabel[textLabel].Add(clickedWord);
-            // DatabaseManager.Instance.InsertSelectedWord(activeEventId, postId, clickedWord);
-
-            HighlightWord(textLabel, clickedWord);
+                HighlightWord(textLabel, clickedWord);
+            }
+            else
+            {
+                OnTextUnclicked(evt, textLabel);
+            }
         }
     }
 
@@ -403,9 +381,8 @@ public class GameUIController : MonoBehaviour
         //int activeEventId = GameManager.instance.ActiveEventId;
         //List<WordFolders> folders = DatabaseManager.Instance.GetFoldersForEvent(activeEventId);
 
-
-        
         //TODO: GIVE A LOOK AND ADJUST
+        document.rootVisualElement.Q("selectedWordsPanel").style.display = DisplayStyle.None;
         VisualElement folderListPanel = document.rootVisualElement.Q("folderListPanel");
         folderListPanel.Clear(); // Clear previous items
 
@@ -413,17 +390,19 @@ public class GameUIController : MonoBehaviour
 
         foreach (WordFolders folder in folders)
         {
-            Button folderButton = new Button();
-            folderButton.text = folder.FolderName;
-            folderButton.userData = folder.Id;
+            VisualTreeAsset originalAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/GameUI.uxml");
+            VisualElement holder = originalAsset.Instantiate().Q("noteNewsFolder");
+            holder.style.display = DisplayStyle.Flex;
+            holder.style.flexShrink = 1;
+            holder.style.flexGrow = 0;
+            Button folderButton = holder.Q<Button>("folderButton");
+            holder.Q<Label>("folderName").text = folder.FolderName;
+            holder.userData = folder.Id;
 
             // When clicked, set this folder as active.
-            folderButton.RegisterCallback<ClickEvent>(evt =>
-            {
-                LoadSelectedWordsForFolder(folder.Id);
-            });
+            folderButton.RegisterCallback<ClickEvent>(evt =>LoadSelectedWordsForFolder(folder.Id));
 
-            folderListPanel.Add(folderButton);
+            folderListPanel.Add(holder);
         }
     }
 
@@ -433,7 +412,9 @@ public class GameUIController : MonoBehaviour
         List<SelectedWords> words = DatabaseManager.Instance.GetSelectedWordsForFolder(folderId);
 
         // ADJUST IT TO YOURSELF
+        document.rootVisualElement.Q("folderListPanel").style.display = DisplayStyle.None;
         VisualElement selectedWordsPanel = document.rootVisualElement.Q("selectedWordsPanel");
+        selectedWordsPanel.style.display = DisplayStyle.Flex;
         selectedWordsPanel.Clear();
 
         foreach (SelectedWords sw in words)

@@ -122,7 +122,7 @@
     font-weight: bold;
 }
 
-#newsPanel {
+.news-panel {
     flex-wrap: wrap;
     overflow: hidden;
     justify-content: flex-start;
