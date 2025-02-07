@@ -84,7 +84,7 @@ public class GameUIController : MonoBehaviour
 
     private void RegisterCallbacks(VisualElement root)
     {
-        note.RegisterCallback<ClickEvent>(callback => ChangeVisibility("notePanel", !note.ClassListContains("blocked-tab")));
+        note.RegisterCallback<ClickEvent>(callback => ChangeVisibility("notePanel", !note.ClassListContains("blocked-tab"), LoadFolders));
         news.RegisterCallback<ClickEvent>(callback => ChangeVisibility("newsPanel", true));
         post.RegisterCallback<ClickEvent>(callback => ChangeVisibility("postPanel", !post.ClassListContains("blocked-tab")));
         result.RegisterCallback<ClickEvent>(callback => ChangeVisibility("resultPanel", !result.ClassListContains("blocked-tab")));
@@ -151,33 +151,11 @@ public class GameUIController : MonoBehaviour
         }
     }
 
-    private void OnTextUnclicked(PointerDownEvent evt, Label textLabel)
-    {
-        // Get the word that was unclicked
-        Vector2 localMousePosition = evt.localPosition;
-        string unclickedWord = GetWordAtPosition(textLabel, localMousePosition);
-
-        if (!string.IsNullOrEmpty(unclickedWord))
-        {
-
-            // !!! Control, if all right.
-            int postId = (int)textLabel.userData;
-            int activeEventId = GameManager.instance.ActiveEventId; // use activeEventId instead of folderId for now
-
-            wordsPlayerSelected.Remove(unclickedWord);
-            clickedWordsPerLabel[textLabel].Remove(unclickedWord);
-
-            DatabaseManager.Instance.RemoveSelectedWord(activeEventId, postId, unclickedWord);
-
-            RemoveHighlight(textLabel, unclickedWord);
-        }
-    }
-
 
     private void OnDisable()
     {
         gameButtons.ForEach(b => b.UnregisterCallback<ClickEvent>(PlayClickSound));
-        note.RegisterCallback<ClickEvent>(callback => ChangeVisibility("notePanel", !note.ClassListContains("blocked-tab")));
+        note.RegisterCallback<ClickEvent>(callback => ChangeVisibility("notePanel", !note.ClassListContains("blocked-tab"), LoadFolders));
         news.RegisterCallback<ClickEvent>(callback => ChangeVisibility("newsPanel", true));
         post.RegisterCallback<ClickEvent>(callback => ChangeVisibility("postPanel", !post.ClassListContains("blocked-tab")));
         result.RegisterCallback<ClickEvent>(callback => ChangeVisibility("resultPanel", !result.ClassListContains("blocked-tab")));
@@ -185,43 +163,71 @@ public class GameUIController : MonoBehaviour
 
     public void StartContent(List<Posts> postsToShow)
     {
+        List<VisualElement> holders = new List<VisualElement>();
 
-        //TODO: Add ID to post.userData!!!
         foreach (Posts post in postsToShow)
         {
-            bool randomBoolean = MathUtils.RandomBoolean();
-            VisualElement fillableNewsHolder = CreateNewsHolder(randomBoolean);
+            int widthCategory = GetRandomWidthCategory();
+            VisualElement fillableNewsHolder = CreateNewsHolder(widthCategory);
             fillableNewsHolder.userData = GameManager.instance.ActiveEventId;
 
             Label newsTitleText = new() { text = provacativeWords[UnityEngine.Random.Range(0, provacativeWords.Length)], style = { fontSize = 32 } };
             fillableNewsHolder.Q("newsPictureHolder").Add(newsTitleText);
 
             Label newsContentText = fillableNewsHolder.Q<Label>("newsContentText");
-            newsContentText.text = FormatContentText(post.Content, randomBoolean);
+            newsContentText.text = post.Content.Substring(0, widthCategory == 5 ? 32 : 18);
 
             fillableNewsHolder.RegisterCallback<ClickEvent>(callback => HandleNewsClick(post));
-            newsPanel.Add(fillableNewsHolder);
+            holders.Add(fillableNewsHolder);
+        }
+
+        EnsureLastTwoElementsFillWidth(holders);
+
+        foreach (var holder in holders)
+        {
+            newsPanel.Add(holder);
         }
     }
 
-    private VisualElement CreateNewsHolder(bool randomBoolean)
+    private VisualElement CreateNewsHolder(int widthCategory)
     {
         VisualTreeAsset originalAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/GameUI.uxml");
         VisualElement holder = originalAsset.Instantiate().Q("newsHolder");
         holder.style.display = DisplayStyle.Flex;
         holder.style.flexShrink = 1;
         holder.style.flexGrow = 0;
-        if (randomBoolean)
-        {
-            holder.style.width = holder.style.maxWidth = holder.style.minWidth = new StyleLength(new Length(50, LengthUnit.Percent));
-        }
+
+        float widthPercentage = widthCategory * 10; // Converts 2->20%, 3->30%, etc.
+        holder.style.width = holder.style.maxWidth = holder.style.minWidth = new StyleLength(new Length(widthPercentage, LengthUnit.Percent));
+
         return holder;
     }
 
-    private string FormatContentText(string content, bool randomBoolean)
+    private int GetRandomWidthCategory()
     {
-        return content.Length > (randomBoolean ? 36 : 22) ? content.Substring(0, randomBoolean ? 32 : 17) + "..." : content;
+        int[] widthOptions = { 2, 3, 4, 5 };
+        return widthOptions[UnityEngine.Random.Range(0, widthOptions.Length)];
     }
+
+    private void EnsureLastTwoElementsFillWidth(List<VisualElement> holders)
+    {
+        if (holders.Count >= 2)
+        {
+            VisualElement last = holders[^1];
+            VisualElement secondLast = holders[^2];
+
+            float lastWidth = last.style.width.value.value;
+            float secondLastWidth = secondLast.style.width.value.value;
+
+            if (lastWidth + secondLastWidth != 100)
+            {
+                last.style.width = last.style.maxWidth = last.style.minWidth = new StyleLength(new Length(50, LengthUnit.Percent));
+                secondLast.style.width = secondLast.style.maxWidth = secondLast.style.minWidth = new StyleLength(new Length(50, LengthUnit.Percent));
+            }
+        }
+    }
+
+
 
     private void HandleNewsClick(Posts post)
     {
@@ -240,7 +246,7 @@ public class GameUIController : MonoBehaviour
         {
             formattedText.Append(c);
             charCount++;
-            if (charCount % 66 == 0)
+            if (charCount % 64 == 0)
                 formattedText.Append('\n');
         }
         return formattedText.ToString() + "...";
@@ -256,32 +262,36 @@ public class GameUIController : MonoBehaviour
     private void ChangeDisplayOfPanel(VisualElement element, [AllowsNull] string elementToPutContentIn, Posts post)
     {
         element.style.display = DisplayStyle.Flex;
-        if (elementToPutContentIn != null && (elementToPutContentIn.Equals("linksHolder") ? webArticle : socialMedia).style.display == DisplayStyle.None)
+        if (elementToPutContentIn != null)
         {
             VisualElement element1 = document.rootVisualElement.Q(elementToPutContentIn);
             if (element1 is ListView listView)
             {
-                Label textToPut = new();
-                textToPut.text = GetLinkText(post.Content.Substring(0, (int)(post.Content.Length / 3)));
-                textToPut.style.marginTop = new StyleLength(new Length(5, LengthUnit.Percent));
-                textToPut.style.marginBottom = new StyleLength(new Length(5, LengthUnit.Percent));
-                textToPut.style.color = Color.blue;
+                listView.Clear();
+                VisualElement background = new();
+                background.style.marginTop = new StyleLength(new Length(5, LengthUnit.Percent));
+                background.style.marginBottom = new StyleLength(new Length(5, LengthUnit.Percent));
+                background.style.width = new StyleLength(new Length(100, LengthUnit.Percent));
+                background.style.height = new StyleLength(new Length(12.5f, LengthUnit.Percent));
+                background.style.backgroundColor = new StyleColor(new Color(0.45f, 0.45f, 0.45f, 0.5f));
+                Label textToPut = new() { text = GetLinkText(post.Content.Substring(0, 64)) };
+                textToPut.style.color = Color.white;
                 textToPut.style.width = new StyleLength(new Length(100, LengthUnit.Percent));
-                textToPut.style.height = new StyleLength(new Length(20, LengthUnit.Percent));
-                textToPut.style.backgroundColor = new StyleColor(new Color(0.9f, 0.9f, 0.9f));
+                textToPut.style.height = new StyleLength(new Length(100, LengthUnit.Percent));
+                background.Add(textToPut);
 
                 //TODO: handle gen of content to social media user | web article
-                textToPut.RegisterCallback<ClickEvent>(callback =>
+                background.RegisterCallback<ClickEvent>(callback =>
                 {
                     (elementToPutContentIn.Equals("linksHolder") ? webArticle : socialMedia).style.display = DisplayStyle.Flex;
                     element.style.display = DisplayStyle.None;
                 });
-                listView.hierarchy.Add(textToPut);
+                listView.hierarchy.Add(background);
             }
         }
     }
 
-    public void ChangeVisibility(string panelName, bool condition)
+    public void ChangeVisibility(string panelName, bool condition, Action? task = null)
     {
         var root = document.rootVisualElement;
         string[] panelNames = { "postPanel", "newsPanel", "resultPanel", "notePanel" };
@@ -292,6 +302,7 @@ public class GameUIController : MonoBehaviour
             {
                 root.Q("contentPanel").Q<VisualElement>(panel).style.display = (panel == panelName) ? DisplayStyle.Flex : DisplayStyle.None;
             }
+            task?.Invoke();
         }
     }
 
@@ -303,7 +314,7 @@ public class GameUIController : MonoBehaviour
 
         if (!string.IsNullOrEmpty(clickedWord))
         {
-            if (!wordsPlayerSelected.Contains(clickedWord))
+            if (!clickedWordsPerLabel[textLabel].Contains(clickedWord))
             {
                 // We need to put userData into postText before
                 // int postId = (int)postText.userData;
@@ -316,9 +327,22 @@ public class GameUIController : MonoBehaviour
             }
             else
             {
-                OnTextUnclicked(evt, textLabel);
+                OnTextUnclicked(clickedWord, textLabel);
             }
         }
+    }
+    private void OnTextUnclicked(string unclickedWord, Label textLabel)
+    {
+        // !!! Control, if all right.
+        int postId = (int)textLabel.userData;
+        int activeEventId = GameManager.instance.ActiveEventId; // use activeEventId instead of folderId for now
+
+        wordsPlayerSelected.Remove(unclickedWord);
+        clickedWordsPerLabel[textLabel].Remove(unclickedWord);
+
+        DatabaseManager.Instance.RemoveSelectedWord(activeEventId, postId, unclickedWord);
+
+        RemoveHighlight(textLabel, unclickedWord);
     }
 
     private string GetWordAtPosition(Label textLabel, Vector2 position)
@@ -384,6 +408,7 @@ public class GameUIController : MonoBehaviour
         //TODO: GIVE A LOOK AND ADJUST
         document.rootVisualElement.Q("selectedWordsPanel").style.display = DisplayStyle.None;
         VisualElement folderListPanel = document.rootVisualElement.Q("folderListPanel");
+        folderListPanel.style.display = DisplayStyle.Flex;
         folderListPanel.Clear(); // Clear previous items
 
         List<WordFolders> folders = DatabaseManager.Instance.GetFolders();
@@ -396,11 +421,11 @@ public class GameUIController : MonoBehaviour
             holder.style.flexShrink = 1;
             holder.style.flexGrow = 0;
             Button folderButton = holder.Q<Button>("folderButton");
-            holder.Q<Label>("folderName").text = folder.FolderName;
+            holder.Q<Label>("folderName").text = folder.FolderName.Substring(0, 8);
             holder.userData = folder.Id;
 
             // When clicked, set this folder as active.
-            folderButton.RegisterCallback<ClickEvent>(evt =>LoadSelectedWordsForFolder(folder.Id));
+            folderButton.RegisterCallback<ClickEvent>(evt => LoadSelectedWordsForFolder(folder.Id));
 
             folderListPanel.Add(holder);
         }
@@ -408,6 +433,7 @@ public class GameUIController : MonoBehaviour
 
     private void LoadSelectedWordsForFolder(int folderId)
     {
+        document.rootVisualElement.Q("folderListPanel").style.display = DisplayStyle.None;
         // Retrieve selected words for this folder from the DB.
         List<SelectedWords> words = DatabaseManager.Instance.GetSelectedWordsForFolder(folderId);
 
@@ -419,7 +445,7 @@ public class GameUIController : MonoBehaviour
 
         foreach (SelectedWords sw in words)
         {
-            Label wordLabel = new Label(sw.Word);
+            Label wordLabel = new Label(sw.Word) { text = sw.Word };
             selectedWordsPanel.Add(wordLabel);
         }
     }
