@@ -54,14 +54,13 @@ public class DatabaseManager : MonoBehaviour
         Debug.Log("Database connection closed.");
     }
 
-    // In DatabaseManager.cs
-    public void InsertSelectedWord(int folderId, int postId, string word)
+    public void InsertSelectedWord(int eventId, int postId, string word)
     {
         try
         {
             _connection.Insert(new SelectedWords
             {
-                FolderId = folderId,
+                EventId = eventId,
                 PostId = postId,
                 Word = word
             });
@@ -100,13 +99,13 @@ public class DatabaseManager : MonoBehaviour
     }
 
 
-    public void RemoveSelectedWord(int folderId, int postId, string word)
+    public void RemoveSelectedWord(int eventId, int postId, string word)
     {
         try
         {
             _connection.Execute(
-                "DELETE FROM SelectedWords WHERE FolderId = ? AND PostId = ? AND Word = ?",
-                folderId, postId, word
+                "DELETE FROM SelectedWords WHERE EventId = ? AND PostId = ? AND Word = ?",
+                eventId, postId, word
             );
         }
         catch (Exception e)
@@ -114,10 +113,10 @@ public class DatabaseManager : MonoBehaviour
             Debug.LogError($"Failed to remove word: {e.Message}");
         }
     }
-    public List<SelectedWords> GetSelectedWordsForFolder(int folderId)
+    public List<SelectedWords> GetSelectedWordsForEvent(int eventId)
     {
         return _connection.Query<SelectedWords>(
-            "SELECT * FROM SelectedWords WHERE FolderId = ?", folderId
+            "SELECT * FROM SelectedWords WHERE EventId = ?", eventId
         ).ToList();
     }
 
@@ -175,7 +174,11 @@ public class DatabaseManager : MonoBehaviour
 
     public string GetOrganizationName(int? orgId)
     {
-        return orgId.HasValue ? _connection.Find<Organizations>(orgId.Value)?.Name : "Independent";
+        return orgId.HasValue ? _connection.Find<Organizations>(orgId.Value)?.Name : "Unknown Source";
+    }
+    public string GetCharacterName(int? charId)
+    {
+        return charId.HasValue ? _connection.Find<Characters>(charId.Value)?.Name : "Unknown Source";
     }
 
     public string GetCharacterBiases(int characterId)
@@ -270,10 +273,10 @@ public class DatabaseManager : MonoBehaviour
         _connection.Execute(@"
             CREATE TABLE IF NOT EXISTS SelectedWords(
                 Id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                FolderId INTEGER NOT NULL,
+                EventId INTEGER NOT NULL,
                 PostId INTEGER NOT NULL,
                 Word TEXT,
-                FOREIGN KEY (FolderId) REFERENCES WordFolders(Id),
+                FOREIGN KEY (EventId) REFERENCES Events(Id),
                 FOREIGN KEY (PostId) REFERENCES Posts(Id)
             )
         ");

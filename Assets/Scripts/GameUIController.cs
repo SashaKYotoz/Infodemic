@@ -169,9 +169,19 @@ public class GameUIController : MonoBehaviour
         {
             int widthCategory = GetRandomWidthCategory();
             VisualElement fillableNewsHolder = CreateNewsHolder(widthCategory);
-            fillableNewsHolder.userData = GameManager.instance.ActiveEventId;
+            fillableNewsHolder.userData = post.Id;
 
-            Label newsTitleText = new() { text = provacativeWords[UnityEngine.Random.Range(0, provacativeWords.Length)], style = { fontSize = 32 } };
+
+            string sourceName = "Unknown";
+            if (post.CharacterId != null)
+            {
+                sourceName = DatabaseManager.Instance.GetCharacterName(post.CharacterId.Value);
+            }
+            else if (post.OrganizationId != null)
+            {
+                sourceName = DatabaseManager.Instance.GetOrganizationName(post.OrganizationId.Value);
+            }
+            Label newsTitleText = new Label(sourceName) { style = { fontSize = 32 } };
             fillableNewsHolder.Q("newsPictureHolder").Add(newsTitleText);
 
             Label newsContentText = fillableNewsHolder.Q<Label>("newsContentText");
@@ -331,6 +341,7 @@ public class GameUIController : MonoBehaviour
             }
         }
     }
+
     private void OnTextUnclicked(string unclickedWord, Label textLabel)
     {
         // !!! Control, if all right.
@@ -425,17 +436,17 @@ public class GameUIController : MonoBehaviour
             holder.userData = folder.Id;
 
             // When clicked, set this folder as active.
-            folderButton.RegisterCallback<ClickEvent>(evt => LoadSelectedWordsForFolder(folder.Id));
+            folderButton.RegisterCallback<ClickEvent>(evt => LoadSelectedWordsForEvent(folder.Id));
 
             folderListPanel.Add(holder);
         }
     }
 
-    private void LoadSelectedWordsForFolder(int folderId)
+    private void LoadSelectedWordsForEvent(int eventId)
     {
         document.rootVisualElement.Q("folderListPanel").style.display = DisplayStyle.None;
         // Retrieve selected words for this folder from the DB.
-        List<SelectedWords> words = DatabaseManager.Instance.GetSelectedWordsForFolder(folderId);
+        List<SelectedWords> words = DatabaseManager.Instance.GetSelectedWordsForEvent(eventId);
 
         // ADJUST IT TO YOURSELF
         document.rootVisualElement.Q("folderListPanel").style.display = DisplayStyle.None;

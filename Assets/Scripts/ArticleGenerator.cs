@@ -29,7 +29,7 @@ public class ArticleGenerator : MonoBehaviour
 
 
         // Folder ID is the same as event one, for now
-        List<SelectedWords> selectedWords = DatabaseManager.Instance.GetSelectedWordsForFolder(activeEventId);
+        List<SelectedWords> selectedWords = DatabaseManager.Instance.GetSelectedWordsForEvent(activeEventId);
         string selectedWordsText = string.Join(", ", selectedWords);
 
         List<Posts> eventPosts = DatabaseManager.Instance.GetPostsForEvent(activeEventId);
