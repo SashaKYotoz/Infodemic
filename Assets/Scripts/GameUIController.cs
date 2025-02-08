@@ -14,7 +14,7 @@ public class GameUIController : MonoBehaviour
     private UIDocument document;
 
     // Panels
-    private VisualElement newsPanel, sourcePanel, socialMediaPanel, socialMedia, webArticle;
+    private VisualElement newsPanel, postWordsPanel, sourcePanel, socialMediaPanel, socialMedia, webArticle;
 
     // Tabs
     private Button news, post, note, result;
@@ -43,6 +43,7 @@ public class GameUIController : MonoBehaviour
     {
         newsPanel = root.Q("newsPanel");
         sourcePanel = root.Q("sourcePanel");
+        postWordsPanel = root.Q("postWordsPanel");
         socialMedia = root.Q("socialMedia");
         socialMediaPanel = root.Q("socialMediaPanel");
         webArticle = root.Q("webArticle");
@@ -218,16 +219,17 @@ public class GameUIController : MonoBehaviour
     private void Update()
     {
         if (wordsPlayerSelected.Any() && note.ClassListContains("blocked-tab"))
-        {
             note.RemoveFromClassList("blocked-tab");
-        }
+        if (document.rootVisualElement.Q<ScrollView>("wordsHolder").childCount > 0 && post.ClassListContains("blocked-tab"))
+            post.RemoveFromClassList("blocked-tab");
     }
 
     public void ChangeVisibility(string panelName, bool condition, Action? task = null)
     {
         var root = document.rootVisualElement;
         string[] panelNames = { "postPanel", "newsPanel", "resultPanel", "notePanel" };
-
+        if (panelName != "postPanel")
+            postWordsPanel.style.display = DisplayStyle.Flex;
         if (condition)
         {
             foreach (string panel in panelNames)
@@ -276,18 +278,16 @@ public class GameUIController : MonoBehaviour
     {
         float effectiveX = clickPosition.x - textLabel.resolvedStyle.paddingLeft;
         float effectiveY = clickPosition.y - textLabel.resolvedStyle.paddingTop;
-
         Debug.Log($"ClickPosition: {clickPosition}, EffectiveX: {effectiveX}, EffectiveY: {effectiveY}");
-
         string text = originalTextPerLabel.ContainsKey(textLabel) ? originalTextPerLabel[textLabel] : textLabel.text;
-        string[] words = Regex.Split(text, @"\s+");
+        string[] words = System.Text.RegularExpressions.Regex.Split(text, @"\s+");
 
-        float availableWidth = textLabel.contentRect.width;
-        float fontSize = textLabel.resolvedStyle.fontSize;
-        float lineHeight = fontSize * 1.2f;
-        Debug.Log($"AvailableWidth: {availableWidth}, FontSize: {fontSize}, Estimated LineHeight: {lineHeight}");
-
+        float availableWidth = textLabel.contentRect.width
+                               - textLabel.resolvedStyle.paddingLeft
+                               - textLabel.resolvedStyle.paddingRight;
         float spaceWidth = textLabel.MeasureTextSize(" ", 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x;
+        Debug.Log($"AvailableWidth: {availableWidth}, SpaceWidth: {spaceWidth}");
+
         List<(string word, float width)> measuredWords = new List<(string, float)>();
         foreach (string word in words)
         {
@@ -331,15 +331,24 @@ public class GameUIController : MonoBehaviour
             Debug.Log($"Line {i}: {lineContent}");
         }
 
-        int lineIndex = Mathf.FloorToInt(effectiveY / lineHeight);
+        float computedLineHeight = textLabel.resolvedStyle.fontSize * 1.2f;
+        if (lines.Count > 0)
+        {
+            string firstLineText = string.Join(" ", lines[0].Select(item => item.word));
+            computedLineHeight = textLabel.MeasureTextSize(firstLineText, 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).y;
+        }
+        Debug.Log($"ComputedLineHeight: {computedLineHeight}");
+
+        int lineIndex = Mathf.FloorToInt(effectiveY / computedLineHeight);
         if (lineIndex < 0 || lineIndex >= lines.Count)
         {
+            Debug.Log("Click outside of text lines.");
             return "";
         }
         var clickedLine = lines[lineIndex];
-        float accumulatedX = 0f;
-        float tolerance = 3f; // Increase tolerance if needed
 
+        float tolerance = 3f;
+        float accumulatedX = 0f;
         foreach (var item in clickedLine)
         {
             if (effectiveX >= (accumulatedX - tolerance) && effectiveX <= (accumulatedX + item.width + tolerance))
@@ -349,8 +358,10 @@ public class GameUIController : MonoBehaviour
             }
             accumulatedX += item.width + spaceWidth;
         }
+
         return "";
     }
+
 
 
     private void LoadHighlights(Label textLabel)
@@ -401,12 +412,12 @@ public class GameUIController : MonoBehaviour
 
     public void LoadFolders()
     {
-        //TODO: GIVE A LOOK AND ADJUST
+        postWordsPanel.style.display = DisplayStyle.None;
         note.RemoveFromClassList("blocked-tab");
         document.rootVisualElement.Q("selectedWordsPanel").style.display = DisplayStyle.None;
         VisualElement folderListPanel = document.rootVisualElement.Q("folderListPanel");
         folderListPanel.style.display = DisplayStyle.Flex;
-        folderListPanel.Clear(); // Clear previous items
+        folderListPanel.Clear();
 
         List<WordFolders> folders = DatabaseManager.Instance.GetFolders();
 
@@ -431,26 +442,45 @@ public class GameUIController : MonoBehaviour
     private void LoadSelectedWordsForEvent(int eventId)
     {
         document.rootVisualElement.Q("folderListPanel").style.display = DisplayStyle.None;
-        // Retrieve selected words for this folder from the DB.
+        if (document.rootVisualElement.Q("notePanel").style.display == DisplayStyle.Flex){
+            postWordsPanel.style.display = DisplayStyle.Flex;
+            socialMedia.style.display = DisplayStyle.None;
+            webArticle.style.display = DisplayStyle.None;
+        }
+
         List<SelectedWords> words = DatabaseManager.Instance.GetSelectedWordsForEvent(eventId);
 
-        // ADJUST IT TO YOURSELF
-        document.rootVisualElement.Q("folderListPanel").style.display = DisplayStyle.None;
         VisualElement selectedWordsPanel = document.rootVisualElement.Q("selectedWordsPanel");
         selectedWordsPanel.style.display = DisplayStyle.Flex;
         selectedWordsPanel.Clear();
+
+        ScrollView wordsHolder = document.rootVisualElement.Q<ScrollView>("wordsHolder");
 
         foreach (SelectedWords sw in words)
         {
             Label wordLabel = new Label(sw.Word) { text = sw.Word };
             selectedWordsPanel.Add(wordLabel);
+            wordLabel.RegisterCallback<ClickEvent>(evt =>
+            {
+                if (wordLabel.parent == selectedWordsPanel)
+                {
+                    selectedWordsPanel.Remove(wordLabel);
+                    wordsHolder.contentContainer.Add(wordLabel);
+                }
+                else if (wordLabel.parent == wordsHolder.contentContainer)
+                {
+                    wordsHolder.contentContainer.Remove(wordLabel);
+                    selectedWordsPanel.Add(wordLabel);
+                }
+            });
         }
     }
 
     private void UpdateTextForPost()
     {
         Label postText = document.rootVisualElement.Q<Label>("postText");
-        // postText.text = text;
+        foreach (Label l in document.rootVisualElement.Q<ScrollView>("wordsHolder").Children())
+            postText.text += l.text + "\t";
     }
     public void HandleArticle(Articles article)
     {

@@ -13,8 +13,8 @@
                 <ui:Button name="windows" enabled="false" class="widget" style="width: 32px; height: 32px; max-width: 64px; max-height: 64px; min-height: 32px; min-width: 32px; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=1728699078&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#windows&quot;); background-color: rgba(188, 188, 188, 0); transition-duration: 0.2s;" />
                 <ui:Button name="dash" enabled="false" class="widget" style="width: 32px; height: 32px; max-width: 64px; max-height: 64px; min-height: 32px; min-width: 32px; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=1585838607&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#dash&quot;); background-color: rgba(188, 188, 188, 0); transition-duration: 0.2s;" />
             </ui:VisualElement>
-            <ui:ScrollView name="newsPanel" class="news-panel" style="flex-grow: 1; width: 100%; height: 90%; padding-right: 2%; padding-left: 2%; padding-bottom: 2%; display: none;" />
-            <ui:VisualElement name="postPanel" style="flex-grow: 1; width: 100%; display: flex; font-size: 22px; -unity-font-style: bold; padding-right: 2%; padding-bottom: 2%; padding-left: 2%;">
+            <ui:ScrollView name="newsPanel" class="news-panel" style="flex-grow: 1; width: 100%; height: 90%; padding-right: 2%; padding-left: 2%; padding-bottom: 2%; display: flex;" />
+            <ui:VisualElement name="postPanel" style="flex-grow: 1; width: 100%; display: none; font-size: 22px; -unity-font-style: bold; padding-right: 2%; padding-bottom: 2%; padding-left: 2%;">
                 <ui:Label name="postText" class="content-text" style="font-size: 22px; -unity-font-style: bold; width: 100%; height: 70%; white-space: normal;" />
                 <ui:Button text="Write Article" name="postButton" style="width: 40%; white-space: nowrap; text-overflow: clip; -unity-text-align: middle-center; align-self: center;" />
             </ui:VisualElement>
@@ -28,6 +28,9 @@
                 <ui:Label text="Label" name="aiNote" style="font-size: 16px; -unity-font-style: bold; -unity-text-align: upper-left; width: 100%; height: 50%;" />
                 <ui:Button text="Generate new topic" name="generationButton" style="width: 50%; font-size: 16px; -unity-font-style: bold;" />
             </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="postWordsPanel" class="content-panel" style="flex-grow: 1; display: none; font-size: 22px; color: rgb(255, 255, 255); -unity-font-style: bold; width: 30%; background-color: rgb(66, 66, 66); height: 100%; align-self: flex-start; align-content: flex-start; align-items: flex-start; justify-content: flex-start; background-image: none; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; border-left-color: rgb(21, 21, 21); border-right-color: rgb(21, 21, 21); border-top-color: rgb(21, 21, 21); border-bottom-color: rgb(21, 21, 21); border-top-width: 3px; border-right-width: 6px; border-bottom-width: 6px; border-left-width: 0; border-top-right-radius: 5px; border-bottom-right-radius: 5px; max-width: 30%; max-height: 100%;">
+            <ui:ScrollView name="wordsHolder" style="flex-wrap: wrap; width: 100%; height: 100%;" />
         </ui:VisualElement>
         <ui:VisualElement name="socialMediaPanel" class="content-panel" style="flex-grow: 1; display: none; font-size: 22px; color: rgb(255, 255, 255); -unity-font-style: bold; width: 50%; background-color: rgb(25, 25, 25); height: 100%; align-self: flex-start; align-content: flex-start; align-items: flex-start; justify-content: flex-start; background-image: none; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; border-left-color: rgba(39, 39, 39, 0.69); border-right-color: rgba(39, 39, 39, 0.69); border-top-color: rgba(39, 39, 39, 0.69); border-bottom-color: rgba(39, 39, 39, 0.69); border-top-width: 5px; border-right-width: 5px; border-bottom-width: 5px; border-left-width: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px;">
             <ui:VisualElement name="widgetsPanel" style="flex-grow: 1; height: 32px; max-height: 64px; max-width: 100%; width: 100%; min-width: 50%; min-height: 32px; flex-direction: row-reverse;">
@@ -57,7 +60,7 @@
             </ui:VisualElement>
             <ui:VisualElement name="hr" class="horizontal-line" />
             <ui:VisualElement name="additionalInfo" style="width: 100%; height: 70%; display: flex; align-items: flex-start; justify-content: flex-start; align-self: flex-start;">
-                <ui:Label name="socialMediaContent" text="Additional information goes here." class="content-text supports_change" style="font-size: 20px; text-align: center; padding: 10px; width: 100%; height: 100%; white-space: normal;" />
+                <ui:Label name="socialMediaContent" text="Additional information goes here." class="content-text supports_change" style="font-size: 22px; text-align: center; padding: 10px; width: 100%; height: 100%; white-space: pre-wrap; -unity-font-style: normal;" />
             </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement name="webArticle" class="main-panel" style="display: none; width: 50%; background-color: rgb(66, 66, 66); border-left-color: rgba(0, 0, 0, 0.69); border-right-color: rgba(0, 0, 0, 0.69); border-top-color: rgba(0, 0, 0, 0.69); border-bottom-color: rgba(0, 0, 0, 0.69); border-right-width: 6px; border-bottom-width: 6px; border-left-width: 3px; border-top-width: 3px; border-top-left-radius: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; border-bottom-left-radius: 0; flex-direction: column;">
@@ -67,12 +70,12 @@
             </ui:VisualElement>
             <ui:VisualElement name="content" class="content-panel" style="flex-grow: 1; background-color: rgba(30, 30, 30, 0); flex-direction: row; width: 100%; height: 90%;">
                 <ui:VisualElement name="centerPanel" class="panel" style="width: 70%; align-items: flex-start; justify-content: flex-start; flex-direction: row;">
-                    <ui:Label text="Center Panel Content" name="articleContent" class="panel-text supports_change" style="width: 100%; height: 100%; font-size: 22px; color: rgb(255, 255, 255); white-space: normal;" />
+                    <ui:Label text="Center Panel Content" name="articleContent" class="panel-text supports_change" style="width: 100%; height: 100%; font-size: 22px; color: rgb(255, 255, 255); white-space: pre-wrap;" />
                 </ui:VisualElement>
                 <ui:VisualElement name="divider1" class="vertical-rule" />
                 <ui:VisualElement name="rightPanel" class="panel" style="width: 30%; justify-content: flex-start; align-items: center; display: flex;">
                     <ui:VisualElement name="articlePictureHolder" class="square" style="margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; height: 128px; width: 128px;" />
-                    <ui:Label text="Right Panel Text" name="articleTitle" class="panel-text supports_change" style="-unity-text-align: upper-left; width: 100%; height: 40%; font-size: 24px; -unity-font-style: bold; border-left-color: rgba(255, 255, 255, 0); border-right-color: rgba(255, 255, 255, 0); border-top-color: rgba(255, 255, 255, 0); border-bottom-color: rgba(255, 255, 255, 0); color: rgb(255, 255, 255); white-space: normal;" />
+                    <ui:Label text="Right Panel Text" name="articleTitle" class="panel-text" style="-unity-text-align: upper-left; width: 100%; height: 40%; font-size: 22px; -unity-font-style: bold; border-left-color: rgba(255, 255, 255, 0); border-right-color: rgba(255, 255, 255, 0); border-top-color: rgba(255, 255, 255, 0); border-bottom-color: rgba(255, 255, 255, 0); color: rgb(255, 255, 255); white-space: normal;" />
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
@@ -87,13 +90,13 @@
             <ui:Label text="Label" name="userName" style="font-size: 24px; -unity-font-style: bold; flex-grow: 1; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0;" />
         </ui:VisualElement>
         <ui:VisualElement name="userTextPanel" style="width: 100%; padding: 5%; font-size: 20px; padding-top: 2.5%; padding-bottom: 2.5%; flex-wrap: nowrap;">
-            <ui:Label text="Label" name="userText" style="width: 100%; white-space: normal;" />
+            <ui:Label text="Label" name="userText" style="width: 100%; white-space: normal; font-size: 22px;" />
         </ui:VisualElement>
-        <ui:VisualElement name="bottomPart" style="display: none; flex-direction: row; justify-content: center; align-items: center; width: 100%; height: auto; padding: 1%; max-height: 10%; max-width: 100%; flex-wrap: wrap;">
-            <ui:VisualElement name="comment" class="decorative-buttons" style="width: 64px; height: 64px; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=-958558946&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#picture_bg&quot;); margin: 0 10px; max-height: 64px; max-width: 64px; background-size: 64px 64px;" />
-            <ui:VisualElement name="repost" class="decorative-buttons" style="width: 64px; height: 64px; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=-958558946&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#picture_bg&quot;); margin: 0 10px; max-width: 64px; max-height: 64px; background-size: 64px 64px;" />
-            <ui:VisualElement name="like" class="decorative-buttons" style="width: 64px; height: 64px; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=-958558946&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#picture_bg&quot;); margin: 0 10px; max-width: 64px; max-height: 64px; background-size: 64px 100%;" />
-            <ui:VisualElement name="views" class="decorative-buttons" style="width: 64px; height: 64px; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=-958558946&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#picture_bg&quot;); margin: 0 10px; max-width: 64px; max-height: 64px; background-size: 64px 64px;" />
+        <ui:VisualElement name="bottomPart" style="display: flex; flex-direction: row; justify-content: center; align-items: center; width: 100%; height: auto; padding: 1%; max-height: 10%; max-width: 100%; flex-wrap: wrap;">
+            <ui:VisualElement name="comment" class="decorative-buttons" style="width: 64px; height: 64px; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=1499856146&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#comments&quot;); margin: 0 10px; max-height: 64px; max-width: 64px; background-size: 64px 64px; background-color: rgba(0, 0, 0, 0); min-width: 32px; min-height: 32px;" />
+            <ui:VisualElement name="repost" class="decorative-buttons" style="width: 64px; height: 64px; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=295498329&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#reposts&quot;); margin: 0 10px; max-width: 64px; max-height: 64px; background-size: 64px 64px; min-width: 32px; min-height: 32px;" />
+            <ui:VisualElement name="like" class="decorative-buttons" style="width: 64px; height: 64px; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=-551155981&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#likes&quot;); margin: 0 10px; max-width: 64px; max-height: 64px; background-size: 64px 100%; min-width: 32px; min-height: 32px;" />
+            <ui:VisualElement name="views" class="decorative-buttons" style="width: 64px; height: 64px; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=-1200733582&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#views&quot;); margin: 0 10px; max-width: 64px; max-height: 64px; background-size: 64px 64px; min-height: 32px; min-width: 32px;" />
         </ui:VisualElement>
     </ui:VisualElement>
     <ui:VisualElement name="modalWindow" style="flex-grow: 1; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=193555676&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#panel_bg&quot;); width: 394px; height: 255px; max-height: 383px; min-height: 127px; max-width: 591px; min-width: 197px; position: absolute; right: 35%; bottom: auto; top: 15%; display: none;">

@@ -116,8 +116,8 @@ TextureImporter:
       name: spriteset_0
       rect:
         serializedVersion: 2
-        x: 246
-        y: 822
+        x: 278
+        y: 1229
         width: 89
         height: 32
       alignment: 0
@@ -138,8 +138,8 @@ TextureImporter:
       name: spriteset_1
       rect:
         serializedVersion: 2
-        x: 246
-        y: 776
+        x: 278
+        y: 1183
         width: 89
         height: 32
       alignment: 0
@@ -160,8 +160,8 @@ TextureImporter:
       name: picture_bg
       rect:
         serializedVersion: 2
-        x: 360
-        y: 777
+        x: 392
+        y: 1184
         width: 76
         height: 76
       alignment: 0
@@ -182,8 +182,8 @@ TextureImporter:
       name: spriteset_3
       rect:
         serializedVersion: 2
-        x: 454
-        y: 788
+        x: 486
+        y: 1195
         width: 76
         height: 67
       alignment: 0
@@ -204,8 +204,8 @@ TextureImporter:
       name: result_tab
       rect:
         serializedVersion: 2
-        x: 454
-        y: 617
+        x: 486
+        y: 1025
         width: 76
         height: 77
       alignment: 0
@@ -226,8 +226,8 @@ TextureImporter:
       name: spriteset_5
       rect:
         serializedVersion: 2
-        x: 548
-        y: 701
+        x: 580
+        y: 1108
         width: 62
         height: 76
       alignment: 0
@@ -248,8 +248,8 @@ TextureImporter:
       name: post_tab
       rect:
         serializedVersion: 2
-        x: 454
-        y: 708
+        x: 486
+        y: 1115
         width: 76
         height: 57
       alignment: 0
@@ -270,8 +270,8 @@ TextureImporter:
       name: spriteset_7
       rect:
         serializedVersion: 2
-        x: 541
-        y: 788
+        x: 573
+        y: 1195
         width: 76
         height: 67
       alignment: 0
@@ -292,8 +292,8 @@ TextureImporter:
       name: spriteset_8
       rect:
         serializedVersion: 2
-        x: 545
-        y: 621
+        x: 577
+        y: 1028
         width: 62
         height: 71
       alignment: 0
@@ -314,8 +314,8 @@ TextureImporter:
       name: note_tab
       rect:
         serializedVersion: 2
-        x: 456
-        y: 528
+        x: 488
+        y: 936
         width: 68
         height: 76
       alignment: 0
@@ -336,8 +336,8 @@ TextureImporter:
       name: news_tab
       rect:
         serializedVersion: 2
-        x: 541
-        y: 528
+        x: 573
+        y: 935
         width: 76
         height: 76
       alignment: 0
@@ -358,8 +358,8 @@ TextureImporter:
       name: panel_bg
       rect:
         serializedVersion: 2
-        x: 49
-        y: 512
+        x: 81
+        y: 918
         width: 394
         height: 254
       alignment: 0
@@ -380,8 +380,8 @@ TextureImporter:
       name: browser_bg
       rect:
         serializedVersion: 2
-        x: 23
-        y: 17
+        x: 55
+        y: 424
         width: 599
         height: 478
       alignment: 0
@@ -402,8 +402,8 @@ TextureImporter:
       name: arrowLeft
       rect:
         serializedVersion: 2
-        x: 16
-        y: 818
+        x: 48
+        y: 1225
         width: 32
         height: 32
       alignment: 0
@@ -424,8 +424,8 @@ TextureImporter:
       name: arrowRight
       rect:
         serializedVersion: 2
-        x: 64
-        y: 818
+        x: 96
+        y: 1225
         width: 32
         height: 32
       alignment: 0
@@ -446,8 +446,8 @@ TextureImporter:
       name: exit
       rect:
         serializedVersion: 2
-        x: 112
-        y: 818
+        x: 144
+        y: 1225
         width: 32
         height: 32
       alignment: 0
@@ -468,8 +468,8 @@ TextureImporter:
       name: settings
       rect:
         serializedVersion: 2
-        x: 160
-        y: 818
+        x: 192
+        y: 1225
         width: 32
         height: 32
       alignment: 0
@@ -490,12 +490,12 @@ TextureImporter:
       name: windows
       rect:
         serializedVersion: 2
-        x: 16
-        y: 770
+        x: 48
+        y: 1177
         width: 32
         height: 32
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -512,12 +512,12 @@ TextureImporter:
       name: dash
       rect:
         serializedVersion: 2
-        x: 64
-        y: 770
+        x: 96
+        y: 1177
         width: 32
         height: 32
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -526,6 +526,182 @@ TextureImporter:
       bones: []
       spriteID: a4866d2fcab6002478f79cc825886878
       internalID: 1585838607
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: spriteset_2
+      rect:
+        serializedVersion: 2
+        x: 210
+        y: 0
+        width: 418
+        height: 371
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: f0123b5877b2eaf4bb5ea3021dd03d7e
+      internalID: 592036802
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: webTab
+      rect:
+        serializedVersion: 2
+        x: 669
+        y: 878
+        width: 112
+        height: 24
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: cea398809cd3acc418d76f657d3f649e
+      internalID: -1996489177
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: views
+      rect:
+        serializedVersion: 2
+        x: 736
+        y: 46
+        width: 26
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 4cb21a1016ecee54eabcdb6914635146
+      internalID: -1200733582
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: upload
+      rect:
+        serializedVersion: 2
+        x: 782
+        y: 46
+        width: 22
+        height: 26
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 512ad8c25e08dd44888b5038d8f7aa4e
+      internalID: 1286012913
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: reposts
+      rect:
+        serializedVersion: 2
+        x: 821
+        y: 44
+        width: 31
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: f19bcf049ebb81042a0398d298f1950c
+      internalID: 295498329
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: likes
+      rect:
+        serializedVersion: 2
+        x: 865
+        y: 43
+        width: 32
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5b83ad78009435a4b935e70cd5eb404d
+      internalID: -551155981
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: comments
+      rect:
+        serializedVersion: 2
+        x: 909
+        y: 44
+        width: 32
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 9d707a3faba1b734ca04308510b48e07
+      internalID: 1499856146
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: saves
+      rect:
+        serializedVersion: 2
+        x: 958
+        y: 43
+        width: 22
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 8a39415d0586a1547a6484d80b969540
+      internalID: 2006537187
       vertices: []
       indices: 
       edges: []
@@ -547,24 +723,32 @@ TextureImporter:
       arrowLeft: 999094527
       arrowRight: -1954293361
       browser_bg: 2090127367072622557
+      comments: 1499856146
       dash: 1585838607
       exit: -1920682675
+      likes: -551155981
       news_tab: 1688690590
       note_tab: -1098380140
       panel_bg: 193555676
       picture_bg: -958558946
       post_tab: 198710308
+      reposts: 295498329
       result_tab: -1588996897
+      saves: 2006537187
       settings: -1420820155
       spriteset_0: 251540183
       spriteset_1: 447835299
-      spriteset_13: -690131066
-      spriteset_14: -1515773069
-      spriteset_15: -113786522
+      spriteset_13: -1308716020
+      spriteset_14: -757300099
+      spriteset_15: 904351564
+      spriteset_2: 592036802
       spriteset_3: -1728891293
       spriteset_5: 145214154
       spriteset_7: 9913142
       spriteset_8: -1138864279
+      upload: 1286012913
+      views: -1200733582
+      webTab: -1996489177
       windows: 1728699078
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
