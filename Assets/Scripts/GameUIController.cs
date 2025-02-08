@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -21,12 +20,10 @@ public class GameUIController : MonoBehaviour
     // Widgets
     private List<Button> exit, backToSource;
 
-    // Labels in main panels
-    private Label postText, aiNote, percentageOfCorrectness, percentageOfEnthusiasm;
-
     private List<Button> gameButtons = new List<Button>();
-    private List<string> wordsPlayerSelected = new List<string>();
     private Dictionary<Label, List<string>> clickedWordsPerLabel = new Dictionary<Label, List<string>>();
+    private Dictionary<Label, string> originalTextPerLabel = new Dictionary<Label, string>();
+    private List<string> wordsPlayerSelected = new List<string>();
 
     private AudioSource audioSource;
 
@@ -38,7 +35,6 @@ public class GameUIController : MonoBehaviour
 
         InitializePanels(root);
         InitializeTabs(root);
-        InitializeLabels(root);
         RegisterCallbacks(root);
     }
 
@@ -57,14 +53,6 @@ public class GameUIController : MonoBehaviour
         post = root.Q<Button>("post");
         note = root.Q<Button>("note");
         result = root.Q<Button>("result");
-    }
-
-    private void InitializeLabels(VisualElement root)
-    {
-        postText = root.Q<Label>("postText");
-        aiNote = root.Q<Label>("aiNote");
-        percentageOfCorrectness = root.Q<Label>("percentageOfCorrectness");
-        percentageOfEnthusiasm = root.Q<Label>("percentageOfEnthusiasm");
     }
 
 
@@ -97,9 +85,7 @@ public class GameUIController : MonoBehaviour
         exit = root.Query<Button>(name: "exit").ToList();
         exit.ForEach(b => b.RegisterCallback<ClickEvent>(callback => b.parent.parent.style.display = DisplayStyle.None));
         backToSource = root.Query<Button>(name: "backToSource").ToList();
-        backToSource.ForEach(b => b.RegisterCallback<ClickEvent>(callback => ManageBackToSourceButtons(b)));
-
-        RegisterBackButton(root);
+        // backToSource.ForEach(b => b.RegisterCallback<ClickEvent>(callback => ManageBackToSourceButtons(b)));
         RegisterTextLabelCallbacks(root);
     }
     private void ManageBackToSourceButtons(Button b)
@@ -119,23 +105,6 @@ public class GameUIController : MonoBehaviour
     {
         SceneManager.UnloadSceneAsync("Game");
         SceneManager.LoadScene("Management");
-    }
-
-    private void RegisterBackButton(VisualElement root)
-    {
-        root.Query<Button>(name: "goBackButton").ToList().ForEach(b => b.RegisterCallback<ClickEvent>(callback =>
-        {
-            if (root.Q("socialMedia").style.display == DisplayStyle.Flex)
-            {
-                root.Q("socialMediaPanel").style.display = DisplayStyle.Flex;
-                root.Q("socialMedia").style.display = DisplayStyle.None;
-            }
-            else
-            {
-                root.Q("sourcePanel").style.display = DisplayStyle.Flex;
-                root.Q("webArticle").style.display = DisplayStyle.None;
-            }
-        }));
     }
 
     private void RegisterTextLabelCallbacks(VisualElement root)
@@ -163,103 +132,74 @@ public class GameUIController : MonoBehaviour
 
     public void StartContent(List<Posts> postsToShow)
     {
-        List<VisualElement> holders = new List<VisualElement>();
-
+        ScrollView newsPanel = document.rootVisualElement.Q<ScrollView>("newsPanel");
         foreach (Posts post in postsToShow)
         {
-            int widthCategory = GetRandomWidthCategory();
-            VisualElement fillableNewsHolder = CreateNewsHolder(widthCategory);
+            VisualElement fillableNewsHolder = CreateNewsHolder(post);
             fillableNewsHolder.userData = post.Id;
-
-
-            string sourceName = "Unknown";
-            if (post.CharacterId != null)
-            {
-                sourceName = DatabaseManager.Instance.GetCharacterName(post.CharacterId.Value);
-            }
-            else if (post.OrganizationId != null)
-            {
-                sourceName = DatabaseManager.Instance.GetOrganizationName(post.OrganizationId.Value);
-            }
-            Label newsTitleText = new Label(sourceName) { style = { fontSize = 32 } };
-            fillableNewsHolder.Q("newsPictureHolder").Add(newsTitleText);
-
-            Label newsContentText = fillableNewsHolder.Q<Label>("newsContentText");
-            newsContentText.text = post.Content.Substring(0, widthCategory == 5 ? 32 : 18);
-
-            fillableNewsHolder.RegisterCallback<ClickEvent>(callback => HandleNewsClick(post));
-            holders.Add(fillableNewsHolder);
-        }
-
-        EnsureLastTwoElementsFillWidth(holders);
-
-        foreach (var holder in holders)
-        {
-            newsPanel.Add(holder);
+            fillableNewsHolder.RegisterCallback<ClickEvent>(callback =>
+                ChangeDisplayOfPanel(post.OrganizationId != null ? webArticle : socialMedia, post));
+            newsPanel.contentContainer.Add(fillableNewsHolder);
         }
     }
 
-    private VisualElement CreateNewsHolder(int widthCategory)
+    private VisualElement CreateNewsHolder(Posts post)
     {
         VisualTreeAsset originalAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/GameUI.uxml");
-        VisualElement holder = originalAsset.Instantiate().Q("newsHolder");
-        holder.style.display = DisplayStyle.Flex;
-        holder.style.flexShrink = 1;
-        holder.style.flexGrow = 0;
+        VisualElement holder = originalAsset.Instantiate().Q("userPostHolder");
+        Label userName = holder.Q<Label>("userName");
+        Label userText = holder.Q<Label>("userText");
 
-        float widthPercentage = widthCategory * 10; // Converts 2->20%, 3->30%, etc.
-        holder.style.width = holder.style.maxWidth = holder.style.minWidth = new StyleLength(new Length(widthPercentage, LengthUnit.Percent));
+        holder.style.display = DisplayStyle.Flex;
+
+        string sourceName = "Unknown";
+        if (post.CharacterId != null)
+        {
+            sourceName = DatabaseManager.Instance.GetCharacterName(post.CharacterId.Value);
+        }
+        else if (post.OrganizationId != null)
+        {
+            sourceName = DatabaseManager.Instance.GetOrganizationName(post.OrganizationId.Value);
+        }
+        userName.text = sourceName;
+        userText.text = post.Content;
 
         return holder;
     }
 
-    private int GetRandomWidthCategory()
+    private void ChangeDisplayOfPanel(VisualElement element, Posts post)
     {
-        int[] widthOptions = { 2, 3, 4, 5 };
-        return widthOptions[UnityEngine.Random.Range(0, widthOptions.Length)];
-    }
-
-    private void EnsureLastTwoElementsFillWidth(List<VisualElement> holders)
-    {
-        if (holders.Count >= 2)
+        webArticle.style.display = DisplayStyle.None;
+        socialMedia.style.display = DisplayStyle.None;
+        element.style.display = DisplayStyle.Flex;
+        if (element.Equals(webArticle))
         {
-            VisualElement last = holders[^1];
-            VisualElement secondLast = holders[^2];
+            Label articleContent = webArticle.Q<Label>("articleContent");
+            Label articleTitle = webArticle.Q<Label>("articleTitle");
 
-            float lastWidth = last.style.width.value.value;
-            float secondLastWidth = secondLast.style.width.value.value;
+            SetLabelText(articleContent, post.Content);
+            SetLabelText(articleTitle, DatabaseManager.Instance.GetOrganizationName(post.OrganizationId.Value));
+        }
+        else
+        {
+            Label socialMediaContent = socialMedia.Q<Label>("socialMediaContent");
+            Label personInfo = socialMedia.Q<Label>("personInfo");
 
-            if (lastWidth + secondLastWidth != 100)
-            {
-                last.style.width = last.style.maxWidth = last.style.minWidth = new StyleLength(new Length(50, LengthUnit.Percent));
-                secondLast.style.width = secondLast.style.maxWidth = secondLast.style.minWidth = new StyleLength(new Length(50, LengthUnit.Percent));
-            }
+            SetLabelText(socialMediaContent, post.Content);
+            SetLabelText(personInfo, DatabaseManager.Instance.GetCharacterName(post.CharacterId.Value));
         }
     }
-
-
-
-    private void HandleNewsClick(Posts post)
+    private void SetLabelText(Label label, string text)
     {
-        if (post.CharacterId != null)
-            ChangeDisplayOfPanel(socialMediaPanel, "postsHolder", post);
-        if (post.OrganizationId != null)
-            ChangeDisplayOfPanel(sourcePanel, "linksHolder", post);
-    }
-
-    private string GetLinkText(string innitText)
-    {
-        System.Text.StringBuilder formattedText = new();
-        int charCount = 0;
-
-        foreach (char c in innitText)
+        label.text = text;
+        if (originalTextPerLabel.ContainsKey(label))
         {
-            formattedText.Append(c);
-            charCount++;
-            if (charCount % 64 == 0)
-                formattedText.Append('\n');
+            originalTextPerLabel[label] = text;
         }
-        return formattedText.ToString() + "...";
+        else
+        {
+            originalTextPerLabel.Add(label, text);
+        }
     }
 
     private void Update()
@@ -267,37 +207,6 @@ public class GameUIController : MonoBehaviour
         if (wordsPlayerSelected.Any() && note.ClassListContains("blocked-tab"))
         {
             note.RemoveFromClassList("blocked-tab");
-        }
-    }
-    private void ChangeDisplayOfPanel(VisualElement element, [AllowsNull] string elementToPutContentIn, Posts post)
-    {
-        element.style.display = DisplayStyle.Flex;
-        if (elementToPutContentIn != null)
-        {
-            VisualElement element1 = document.rootVisualElement.Q(elementToPutContentIn);
-            if (element1 is ListView listView)
-            {
-                listView.Clear();
-                VisualElement background = new();
-                background.style.marginTop = new StyleLength(new Length(5, LengthUnit.Percent));
-                background.style.marginBottom = new StyleLength(new Length(5, LengthUnit.Percent));
-                background.style.width = new StyleLength(new Length(100, LengthUnit.Percent));
-                background.style.height = new StyleLength(new Length(12.5f, LengthUnit.Percent));
-                background.style.backgroundColor = new StyleColor(new Color(0.45f, 0.45f, 0.45f, 0.5f));
-                Label textToPut = new() { text = GetLinkText(post.Content.Substring(0, 64)) };
-                textToPut.style.color = Color.white;
-                textToPut.style.width = new StyleLength(new Length(100, LengthUnit.Percent));
-                textToPut.style.height = new StyleLength(new Length(100, LengthUnit.Percent));
-                background.Add(textToPut);
-
-                //TODO: handle gen of content to social media user | web article
-                background.RegisterCallback<ClickEvent>(callback =>
-                {
-                    (elementToPutContentIn.Equals("linksHolder") ? webArticle : socialMedia).style.display = DisplayStyle.Flex;
-                    element.style.display = DisplayStyle.None;
-                });
-                listView.hierarchy.Add(background);
-            }
         }
     }
 
@@ -316,7 +225,6 @@ public class GameUIController : MonoBehaviour
         }
     }
 
-    //text click related stuff
     private void OnTextClicked(PointerDownEvent evt, Label textLabel)
     {
         Vector2 localMousePosition = evt.localPosition;
@@ -326,90 +234,124 @@ public class GameUIController : MonoBehaviour
         {
             if (!clickedWordsPerLabel[textLabel].Contains(clickedWord))
             {
-                // We need to put userData into postText before
-                // int postId = (int)postText.userData;
                 int activeEventId = GameManager.instance.ActiveEventId;
                 wordsPlayerSelected.Add(clickedWord);
                 clickedWordsPerLabel[textLabel].Add(clickedWord);
-                // DatabaseManager.Instance.InsertSelectedWord(activeEventId, postId, clickedWord);
-
-                HighlightWord(textLabel, clickedWord);
+                // DatabaseManager.Instance.InsertSelectedWord(activeEventId, (int)textLabel.userData, clickedWord);
             }
             else
             {
                 OnTextUnclicked(clickedWord, textLabel);
             }
+            UpdateHighlights(textLabel);
         }
     }
 
     private void OnTextUnclicked(string unclickedWord, Label textLabel)
     {
-        // !!! Control, if all right.
-        int postId = (int)textLabel.userData;
-        int activeEventId = GameManager.instance.ActiveEventId; // use activeEventId instead of folderId for now
-
+        // int postId = (int)textLabel.userData;
+        int activeEventId = GameManager.instance.ActiveEventId;
         wordsPlayerSelected.Remove(unclickedWord);
         clickedWordsPerLabel[textLabel].Remove(unclickedWord);
+        // DatabaseManager.Instance.RemoveSelectedWord(activeEventId, postId, unclickedWord);
 
-        DatabaseManager.Instance.RemoveSelectedWord(activeEventId, postId, unclickedWord);
-
-        RemoveHighlight(textLabel, unclickedWord);
+        UpdateHighlights(textLabel);
     }
-
     private string GetWordAtPosition(Label textLabel, Vector2 position)
     {
-        string fullText = textLabel.text;
-        string[] words = fullText.Split(new char[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
+        // Adjust for any left/top padding in the label.
+        float effectiveX = position.x - textLabel.resolvedStyle.paddingLeft;
+        float effectiveY = position.y - textLabel.resolvedStyle.paddingTop;
 
-        float accumulatedWidth = 0f;
+        // Use the stored original text (without rich text tags)
+        string fullText = originalTextPerLabel.ContainsKey(textLabel)
+                            ? originalTextPerLabel[textLabel]
+                            : textLabel.text;
+        string[] words = fullText.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+        float availableWidth = textLabel.contentRect.width;
+        float lineHeight = textLabel.resolvedStyle.fontSize * 1.2f;
+
+        List<List<string>> lines = new List<List<string>>();
+        List<string> currentLine = new List<string>();
+        float currentLineWidth = 0f;
         float spaceWidth = textLabel.MeasureTextSize(" ", 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x;
 
-        for (int i = 0; i < words.Length; i++)
+        foreach (string word in words)
         {
-            float wordWidth = textLabel.MeasureTextSize(words[i], 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x;
-
-            if (position.x >= accumulatedWidth && position.x <= accumulatedWidth + wordWidth)
+            float wordWidth = textLabel.MeasureTextSize(word, 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x;
+            if (currentLine.Count == 0)
             {
-                Debug.Log($"Clicked word: {words[i]} at position {position}");
-                return words[i];
+                currentLine.Add(word);
+                currentLineWidth = wordWidth;
             }
-            accumulatedWidth += wordWidth + spaceWidth;
+            else if (currentLineWidth + spaceWidth + wordWidth <= availableWidth)
+            {
+                currentLine.Add(word);
+                currentLineWidth += spaceWidth + wordWidth;
+            }
+            else
+            {
+                lines.Add(new List<string>(currentLine));
+                currentLine.Clear();
+                currentLine.Add(word);
+                currentLineWidth = wordWidth;
+            }
+        }
+        if (currentLine.Count > 0)
+        {
+            lines.Add(currentLine);
+        }
+
+        int clickedLineIndex = Mathf.FloorToInt(effectiveY / lineHeight);
+        if (clickedLineIndex < 0 || clickedLineIndex >= lines.Count)
+        {
+            return "";
+        }
+        List<string> clickedLineWords = lines[clickedLineIndex];
+
+        // Use a tolerance (in pixels) to help capture very small words.
+        float tolerance = 2f; // adjust this value as needed
+        float accumulatedX = 0f;
+        foreach (string word in clickedLineWords)
+        {
+            float wordWidth = textLabel.MeasureTextSize(word, 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x;
+            if (effectiveX >= (accumulatedX - tolerance) && effectiveX <= (accumulatedX + wordWidth + tolerance))
+            {
+                Debug.Log($"Clicked word: {word} at effective position ({effectiveX}, {effectiveY}) on line {clickedLineIndex}");
+                return word;
+            }
+            accumulatedX += wordWidth + spaceWidth;
         }
 
         return "";
     }
 
 
-    private void HighlightWord(Label textLabel, string word)
+    private void UpdateHighlights(Label textLabel)
     {
-        string fullText = textLabel.text;
+        if (!originalTextPerLabel.ContainsKey(textLabel))
+            return;
+
+        string originalText = originalTextPerLabel[textLabel];
+        string[] words = originalText.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        List<string> selectedWords = clickedWordsPerLabel[textLabel];
+
         string highlightedText = "";
-
-        string[] words = fullText.Split(new char[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
-
-        for (int i = 0; i < words.Length; i++)
+        foreach (string word in words)
         {
-            if (words[i] == word)
+            if (selectedWords.Contains(word))
             {
-                highlightedText += $"<color=yellow>{words[i]}</color> ";
+                highlightedText += $"<color=yellow>{word}</color> ";
             }
             else
             {
-                highlightedText += words[i] + " ";
+                highlightedText += word + " ";
             }
         }
-
         textLabel.text = highlightedText.Trim();
     }
 
-    private void RemoveHighlight(Label textLabel, string word)
-    {
-        string fullText = textLabel.text;
-
-        string unhighlightedText = fullText.Replace($"<color=yellow>{word}</color>", word);
-
-        textLabel.text = unhighlightedText;
-    }
 
     public void LoadFolders()
     {
@@ -460,7 +402,6 @@ public class GameUIController : MonoBehaviour
             selectedWordsPanel.Add(wordLabel);
         }
     }
-
 
     //buttons effects
     private void PlayClickSound(ClickEvent e)

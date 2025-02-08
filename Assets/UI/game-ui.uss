@@ -135,3 +135,12 @@
     background-color: rgba(255, 255, 255, 0.59);
     -unity-background-image-tint-color: rgb(180, 180, 180);
 }
+.decorative-buttons{
+    padding-right: 10%;
+    padding-left: 10%;
+    flex-wrap: wrap;
+    overflow: hidden;
+}
+.decorative-buttons:hover{
+    -unity-background-image-tint-color: rgb(180, 180, 180);
+}
