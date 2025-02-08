@@ -7,6 +7,7 @@ using SimpleJSON;
 using SQLite4Unity3d;
 using System.IO;
 using System.Linq;
+using NUnit.Framework.Constraints;
 
 public class ArticleGenerator : MonoBehaviour
 {
@@ -14,12 +15,30 @@ public class ArticleGenerator : MonoBehaviour
     private string apiUrl = "https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct/v1/chat/completions";
     private string apiKey = "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";
 
+    private static ArticleGenerator _instance;
+
+    private GameUIController gameUIController;
+
 
     private readonly SQLiteConnection _connection;
 
     public ArticleGenerator()
     {
         _connection = DatabaseManager.Instance.Connection;
+    }
+    public static ArticleGenerator Instance => _instance;
+    public SQLiteConnection Connection => _connection;
+    private void Awake()
+    {
+        gameUIController = GameObject.Find("GameUI").GetComponent<GameUIController>();
+        if (_instance != null && _instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        _instance = this;
+        DontDestroyOnLoad(gameObject);
     }
 
     public IEnumerator GenerateArticle()
@@ -118,7 +137,7 @@ Finally, output the result in the following JSON format:
             Debug.Log("ARTICLE: Raw API Response: " + jsonResponse);
 
             var json = JSON.Parse(jsonResponse);
-            var articleData = json["choices"][0]["message"]["content"];
+            var articleData = json["choices"][0]["message"]["content"].ToString();
             var articleJson = JSON.Parse(articleData);
 
             // Create Article
@@ -131,7 +150,7 @@ Finally, output the result in the following JSON format:
                 VeracityScore = articleJson["veracityScore"]
             };
             DatabaseManager.Instance.SaveArticle(newArticle);
-
+            gameUIController.HandleArticle(newArticle);
             ChangeReputationLevel(newArticle);
         }
         else

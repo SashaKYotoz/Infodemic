@@ -13,9 +13,9 @@
                 <ui:Button name="windows" enabled="false" class="widget" style="width: 32px; height: 32px; max-width: 64px; max-height: 64px; min-height: 32px; min-width: 32px; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=1728699078&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#windows&quot;); background-color: rgba(188, 188, 188, 0); transition-duration: 0.2s;" />
                 <ui:Button name="dash" enabled="false" class="widget" style="width: 32px; height: 32px; max-width: 64px; max-height: 64px; min-height: 32px; min-width: 32px; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=1585838607&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#dash&quot;); background-color: rgba(188, 188, 188, 0); transition-duration: 0.2s;" />
             </ui:VisualElement>
-            <ui:ScrollView name="newsPanel" class="news-panel" style="flex-grow: 1; width: 100%; height: 90%; padding-right: 2%; padding-left: 2%; padding-bottom: 2%;" />
-            <ui:VisualElement name="postPanel" style="flex-grow: 1; width: 100%; display: none; font-size: 22px; -unity-font-style: bold; padding-right: 2%; padding-bottom: 2%; padding-left: 2%;">
-                <ui:Label name="postText" class="content-text" style="font-size: 22px; -unity-font-style: bold; width: 100%; height: 70%;" />
+            <ui:ScrollView name="newsPanel" class="news-panel" style="flex-grow: 1; width: 100%; height: 90%; padding-right: 2%; padding-left: 2%; padding-bottom: 2%; display: none;" />
+            <ui:VisualElement name="postPanel" style="flex-grow: 1; width: 100%; display: flex; font-size: 22px; -unity-font-style: bold; padding-right: 2%; padding-bottom: 2%; padding-left: 2%;">
+                <ui:Label name="postText" class="content-text" style="font-size: 22px; -unity-font-style: bold; width: 100%; height: 70%; white-space: normal;" />
                 <ui:Button text="Write Article" name="postButton" style="width: 40%; white-space: nowrap; text-overflow: clip; -unity-text-align: middle-center; align-self: center;" />
             </ui:VisualElement>
             <ui:VisualElement name="notePanel" style="flex-grow: 1; width: 100%; display: none; font-size: 22px; -unity-font-style: bold; padding-right: 2%; padding-bottom: 2%; padding-left: 2%;">
@@ -94,6 +94,18 @@
             <ui:VisualElement name="repost" class="decorative-buttons" style="width: 64px; height: 64px; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=-958558946&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#picture_bg&quot;); margin: 0 10px; max-width: 64px; max-height: 64px; background-size: 64px 64px;" />
             <ui:VisualElement name="like" class="decorative-buttons" style="width: 64px; height: 64px; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=-958558946&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#picture_bg&quot;); margin: 0 10px; max-width: 64px; max-height: 64px; background-size: 64px 100%;" />
             <ui:VisualElement name="views" class="decorative-buttons" style="width: 64px; height: 64px; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=-958558946&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#picture_bg&quot;); margin: 0 10px; max-width: 64px; max-height: 64px; background-size: 64px 64px;" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+    <ui:VisualElement name="modalWindow" style="flex-grow: 1; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=193555676&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#panel_bg&quot;); width: 394px; height: 255px; max-height: 383px; min-height: 127px; max-width: 591px; min-width: 197px; position: absolute; right: 35%; bottom: auto; top: 15%; display: none;">
+        <ui:VisualElement name="widgetsPanel" style="flex-grow: 1; flex-direction: row-reverse; width: 100%; height: 10%; max-height: 10%; min-height: 10%; max-width: 100%; min-width: 100%;">
+            <ui:Button name="exit" class="widget" style="width: 32px; height: 24px; max-width: 64px; max-height: 48px; min-height: 24px; min-width: 32px; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; background-image: none; background-color: rgba(188, 188, 188, 0); transition-duration: 0.2s; right: 0;" />
+        </ui:VisualElement>
+        <ui:VisualElement name="decisionPanel" style="flex-grow: 1; width: 100%; max-width: 100%; min-width: 100%; flex-direction: column; align-content: center; justify-content: center; align-items: center;">
+            <ui:Label text="Do you want quit the game?" style="-unity-font-style: bold; font-size: 25px; color: rgb(255, 255, 255);" />
+            <ui:VisualElement name="buttonContainer" style="flex-grow: 1; height: 20%; max-height: 20%; min-height: 20%; flex-direction: row;">
+                <ui:Button text="Yes" name="quitGameButton" style="width: 89px; height: 32px; max-width: 89px; max-height: 32px; min-height: 16px; min-width: 45px; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=447835299&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#spriteset_1&quot;); -unity-font-style: bold;" />
+                <ui:Button text="Cancel" name="cancelButton" style="width: 89px; height: 32px; max-width: 89px; max-height: 32px; min-height: 16px; min-width: 45px; background-image: url(&quot;project://database/Assets/Textures/spriteset.png?fileID=251540183&amp;guid=9bfe81a10f49cbd4a81661e1e72d3a9c&amp;type=3#spriteset_0&quot;); -unity-font-style: bold;" />
+            </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

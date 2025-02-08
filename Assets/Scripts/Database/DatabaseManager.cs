@@ -82,7 +82,7 @@ public class DatabaseManager : MonoBehaviour
 
     public WordFolders GetFolderForEvent(int eventId) => _connection.Find<WordFolders>(eventId);
 
-    
+
 
     public Media GetMedia(int mediaId)
     {
@@ -121,7 +121,7 @@ public class DatabaseManager : MonoBehaviour
     }
 
     public List<WordFolders> GetFolders() => _connection.Table<WordFolders>().ToList();
-    
+
     public List<Posts> GetPostsForEvent(int eventId)
     {
         return _connection.Query<Posts>(
@@ -148,22 +148,22 @@ public class DatabaseManager : MonoBehaviour
 
     public List<Characters> GetCharacterDetails(List<int> characterIds)
     {
-        if (characterIds.Count == 0) return new List<Characters>();
+        if (characterIds.Count == 0)
+            return new List<Characters>();
 
-        string placeholders = string.Join(",", characterIds.Select(_ => "?"));
-        return _connection.Query<Characters>(
-            $"SELECT * FROM Characters WHERE Id IN ({placeholders})", characterIds.ToArray()
-        );
+        string idList = string.Join(",", characterIds);
+        string query = $"SELECT * FROM Characters WHERE Id IN ({idList})";
+        return _connection.Query<Characters>(query);
     }
 
     public List<Organizations> GetOrganizationDetails(List<int> organizationIds)
     {
-        if (organizationIds.Count == 0) return new List<Organizations>();
+        if (organizationIds.Count == 0)
+            return new List<Organizations>();
 
-        string placeholders = string.Join(",", organizationIds.Select(_ => "?"));
-        return _connection.Query<Organizations>(
-            $"SELECT * FROM Organizations WHERE Id IN ({placeholders})", organizationIds.ToArray()
-        );
+        string idList = string.Join(",", organizationIds);
+        string query = $"SELECT * FROM Organizations WHERE Id IN ({idList})";
+        return _connection.Query<Organizations>(query);
     }
 
 
@@ -250,13 +250,13 @@ public class DatabaseManager : MonoBehaviour
             );");
 
         _connection.Execute(@"
-            CREATE TABLE IF NOT EXISTS Article (
+            CREATE TABLE IF NOT EXISTS Articles (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                 MediaId INTEGER NOT NULL,
                 EventId INTEGER NOT NULL,
                 Title TEXT,
                 Content TEXT,
-                AccuracyScore REAL CHECK(AccuracyScore BETWEEN 0 AND 10),
+                VeracityScore REAL CHECK(VeracityScore BETWEEN 0 AND 10),
                 CreatedAt DATETIME,
                 FOREIGN KEY (MediaId) REFERENCES Media(Id),
                 FOREIGN KEY (EventId) REFERENCES Events(Id)

@@ -74,10 +74,11 @@ public class GameUIController : MonoBehaviour
     {
         note.RegisterCallback<ClickEvent>(callback => ChangeVisibility("notePanel", !note.ClassListContains("blocked-tab"), LoadFolders));
         news.RegisterCallback<ClickEvent>(callback => ChangeVisibility("newsPanel", true));
-        post.RegisterCallback<ClickEvent>(callback => ChangeVisibility("postPanel", !post.ClassListContains("blocked-tab")));
+        post.RegisterCallback<ClickEvent>(callback => ChangeVisibility("postPanel", !post.ClassListContains("blocked-tab"), UpdateTextForPost));
         result.RegisterCallback<ClickEvent>(callback => ChangeVisibility("resultPanel", !result.ClassListContains("blocked-tab")));
 
-        root.Q<Button>("mainExit").RegisterCallback<ClickEvent>(QuitGame);
+        root.Q<Button>("mainExit").RegisterCallback<ClickEvent>(ShowModalWindow);
+        root.Q<Button>("postButton").RegisterCallback<ClickEvent>(callback => StartCoroutine(ArticleGenerator.Instance.GenerateArticle()));
 
         gameButtons = root.Query<Button>().ToList();
         gameButtons.ForEach(b => b.RegisterCallback<ClickEvent>(PlayClickSound));
@@ -101,7 +102,16 @@ public class GameUIController : MonoBehaviour
             sourcePanel.style.display = DisplayStyle.Flex;
         }
     }
-    private void QuitGame(ClickEvent e)
+    private void ShowModalWindow(ClickEvent e)
+    {
+        VisualElement holder = document.rootVisualElement.Q("modalWindow");
+        holder.style.display = DisplayStyle.Flex;
+        Button quitGameButton = holder.Q<Button>("quitGameButton");
+        Button cancelButton = holder.Q<Button>("cancelButton");
+        quitGameButton.RegisterCallback<ClickEvent>(callback => QuitGame());
+        cancelButton.RegisterCallback<ClickEvent>(callback => holder.style.display = DisplayStyle.None);
+    }
+    private void QuitGame()
     {
         SceneManager.UnloadSceneAsync("Game");
         SceneManager.LoadScene("Management");
@@ -401,6 +411,18 @@ public class GameUIController : MonoBehaviour
             Label wordLabel = new Label(sw.Word) { text = sw.Word };
             selectedWordsPanel.Add(wordLabel);
         }
+    }
+
+    private void UpdateTextForPost()
+    {
+        Label postText = document.rootVisualElement.Q<Label>("postText");
+        // postText.text = text;
+    }
+    public void HandleArticle(Articles article)
+    {
+        Label postText = document.rootVisualElement.Q<Label>("postText");
+        postText.text = article.Content;
+        result.RemoveFromClassList("blocked-tab");
     }
 
     //buttons effects
