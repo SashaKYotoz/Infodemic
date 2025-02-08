@@ -4,9 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Unity.VisualScripting;
-using SimpleJSON;
-
 public class DatabaseManager : MonoBehaviour
 {
     private static DatabaseManager _instance;
@@ -113,12 +110,35 @@ public class DatabaseManager : MonoBehaviour
             Debug.LogError($"Failed to remove word: {e.Message}");
         }
     }
+
+    public List<SelectedWords> GetSelectedWordsForPost(int postId)
+    {
+        return _connection.Query<SelectedWords>(
+                    "SELECT * FROM SelectedWords WHERE PostId = ?", postId
+                ).ToList();
+    }
     public List<SelectedWords> GetSelectedWordsForEvent(int eventId)
     {
         return _connection.Query<SelectedWords>(
             "SELECT * FROM SelectedWords WHERE EventId = ?", eventId
         ).ToList();
     }
+
+    public List<Posts> GetPostsForCharacter(int characterId)
+    {
+        return _connection.Query<Posts>(
+            "SELECT * FROM Posts WHERE CharacterId = ? AND CharacterId IS NOT NULL",
+            characterId
+        ).ToList();
+    }
+    public List<Posts> GetPostsForOrganization(int organizationId)
+    {
+        return _connection.Query<Posts>(
+            "SELECT * FROM Posts WHERE OrganizationId = ? AND OrganizationId IS NOT NULL",
+            organizationId
+        ).ToList();
+    }
+
 
     public List<WordFolders> GetFolders() => _connection.Table<WordFolders>().ToList();
 
@@ -310,6 +330,8 @@ public class DatabaseManager : MonoBehaviour
                 Name TEXT,
                 Profession TEXT,
                 Affilation INTEGER,
+                SocialMediaTag TEXT,
+                SocialMediaDescription TEXT,
                 Credibility REAL CHECK(Credibility BETWEEN 1 AND 10),
                 Tier INTEGER,
                 LastUsedEventId INTEGER,
@@ -364,6 +386,8 @@ public class DatabaseManager : MonoBehaviour
                 Name TEXT NOT NULL,
                 TypeId INTEGER,
                 Description TEXT,
+                SocialMediaTag TEXT,
+                SocialMediaDescription TEXT,
                 Credibility REAL CHECK (Credibility BETWEEN 1 AND 10),
                 LastUsedEventId INTEGER,
                 FOREIGN KEY (TypeId) REFERENCES OrganizationTypes(Id)
@@ -423,58 +447,57 @@ public class DatabaseManager : MonoBehaviour
         var defaultOrganizations = new[]
    {
         // Corporations
-        new { Name = "Sentinel Dynamics", TypeId = 1, Description = "A defense contractor specializing in advanced weaponry.", Credibility = 6.8f },
-        new { Name = "Solaris Innovations", TypeId = 1, Description = "A renewable energy corporation pushing clean energy tech.", Credibility = 8.4f },
-        new { Name = "CoreX Minerals", TypeId = 1, Description = "A global leader in rare earth mineral extraction.", Credibility = 5.9f },
-        new { Name = "Summit Capital Group", TypeId = 1, Description = "A controversial private equity firm.", Credibility = 4.5f },
+        new { Name = "Sentinel Dynamics", TypeId = 1, Description = "A defense contractor specializing in advanced weaponry.", Credibility = 6.8f, SocialMediaTag = "@SentinelDynamics", SocialMediaDescription = "Safeguarding nations through innovation in defense technology. Stay secure, stay advanced." },
+        new { Name = "Solaris Innovations", TypeId = 1, Description = "A renewable energy corporation pushing clean energy tech.", Credibility = 8.4f, SocialMediaTag = "@SolarisInnovations", SocialMediaDescription = "Leading the charge for a cleaner planet with cutting-edge renewable energy solutions." },
+        new { Name = "CoreX Minerals", TypeId = 1, Description = "A global leader in rare earth mineral extraction.", Credibility = 5.9f, SocialMediaTag = "@CoreXGlobal", SocialMediaDescription = "Providing essential minerals for a sustainable future. Essential resources for modern tech." },
+        new { Name = "Summit Capital Group", TypeId = 1, Description = "A controversial private equity firm.", Credibility = 4.5f, SocialMediaTag = "@SummitCapital", SocialMediaDescription = "Shaping industries and transforming economies through strategic investments - your wealth, our expertise." },
     
         // NGOs 
-        new { Name = "GreenPulse Movement", TypeId = 2, Description = "Focuses on reducing plastic waste and cleaning oceans.", Credibility = 7.5f },
-        new { Name = "Humanity's Voice Coalition", TypeId = 2, Description = "Defends human rights in the world.", Credibility = 7.8f },
-        new { Name = "Unity Beyond Borders", TypeId = 2, Description = "Specializes in mediating peace treaties in conflict zones.", Credibility = 7.4f },
+        new { Name = "GreenPulse Movement", TypeId = 2, Description = "Focuses on reducing plastic waste and cleaning oceans.", Credibility = 7.5f, SocialMediaTag = "@GreenPulse", SocialMediaDescription = "Turning the tide against plastic pollution. Join us in saving our oceans." },
+        new { Name = "Humanity's Voice Coalition", TypeId = 2, Description = "Defends human rights in the world.", Credibility = 7.8f, SocialMediaTag = "@HumanitysVoice", SocialMediaDescription = "Speaking up for human rights worldwide. Together, we amplify justice." },
+        new { Name = "Unity Beyond Borders", TypeId = 2, Description = "Specializes in mediating peace treaties in conflict zones.", Credibility = 7.4f, SocialMediaTag = "@UnityBorders", SocialMediaDescription = "Fostering peace and understanding across nations. Building bridges, not walls." },
 
 
         // Political Parties
-        new { Name = "Progressive Alliance", TypeId = 3, Description = "A forward-thinking party focused on climate reform.", Credibility = 7.2f },
-        new { Name = "Liberty Front", TypeId = 3, Description = "A libertarian party promoting deregulation and free markets.", Credibility = 6.5f },
-        new { Name = "Social Unity", TypeId = 3, Description = "Populist party advocating for economic equality.", Credibility = 5.8f },
+        new { Name = "Progressive Alliance", TypeId = 3, Description = "A forward-thinking party focused on climate reform.", Credibility = 7.2f, SocialMediaTag = "@ProgressiveAlliance", SocialMediaDescription = "Leading the way to a sustainable and inclusive future. Change begins now." },
+        new { Name = "Liberty Front", TypeId = 3, Description = "A libertarian party promoting deregulation and free markets.", Credibility = 6.5f, SocialMediaTag = "@LibertyFront", SocialMediaDescription = "Advocating for freedom, minimal government, and maximum opportunity." },
+        new { Name = "Social Unity", TypeId = 3, Description = "Populist party advocating for economic equality.", Credibility = 5.8f, SocialMediaTag = "@SocialUnity", SocialMediaDescription = "Fighting for equality and economic justice for all citizens." },
 
         // Media
-        new { Name = "Daily Spectrum", TypeId = 4, Description = "A reputable media outlet known for investigative journalism.", Credibility = 8.7f },
-        new { Name = "Breaking Lens", TypeId = 4, Description = "A popular tabloid known for sensational headlines.", Credibility = 5.2f },
-        new { Name = "Chronicle Insight", TypeId = 4, Description = "A digital-first platform for in-depth reporting.", Credibility = 7.6f },
+        new { Name = "Daily Spectrum", TypeId = 4, Description = "A reputable media outlet known for investigative journalism.", Credibility = 8.7f, SocialMediaTag = "@DailySpectrum", SocialMediaDescription = "Uncovering the truth behind the headlines. Your source for investigative journalism." },
+        new { Name = "Breaking Lens", TypeId = 4, Description = "A popular tabloid known for sensational headlines.", Credibility = 5.2f, SocialMediaTag = "@BreakingLens", SocialMediaDescription = "Your go-to source for sensational stories and breaking news." },
+        new { Name = "Chronicle Insight", TypeId = 4, Description = "A digital-first platform for in-depth reporting.", Credibility = 7.6f, SocialMediaTag = "@ChronicleInsight", SocialMediaDescription = "Exploring the world through data-driven journalism. Stay informed, stay ahead." },
     
         // Activists Group
-        new { Name = "Green Vanguard", TypeId = 5, Description = "A radical environmentalist group.", Credibility = 6.1f },
-        new { Name = "Parity Now!", TypeId = 5, Description = "A movement for gender equality", Credibility = 7.9f },
-        new { Name = "Justice Impact", TypeId = 5, Description = "Campaigning against multinational corporate abuses.", Credibility = 7.2f },
+        new { Name = "Green Vanguard", TypeId = 5, Description = "A radical environmentalist group.", Credibility = 6.1f, SocialMediaTag = "@GreenVanguard", SocialMediaDescription = "Fighting for the planet's future. Radical action for a sustainable world." },
+        new { Name = "Parity Now!", TypeId = 5, Description = "A movement for gender equality", Credibility = 7.9f, SocialMediaTag = "@ParityNow", SocialMediaDescription = " Radical change for a sustainable planet. Activism with impact."},
+        new { Name = "Justice Impact", TypeId = 5, Description = "Campaigning against multinational corporate abuses.", Credibility = 7.2f, SocialMediaTag = "@JusticeImpact", SocialMediaDescription = "Fighting for justice against corporate greed. Your voice, our mission." },
 
         // Religious Organizations
-        new { Name = "Order of the Silver Cross", TypeId = 6, Description = "A Catholic organization focused on humanitarian aid.", Credibility = 8.3f },
-        new { Name = "The Crescent Fellowship", TypeId = 6, Description = "A Muslim organization promoting interfaith dialogue.", Credibility = 8.5f },
+        new { Name = "Order of the Silver Cross", TypeId = 6, Description = "A Catholic organization focused on humanitarian aid.", Credibility = 8.3f, SocialMediaTag = "@SilverCross",  SocialMediaDescription = "Faith in action—providing aid and hope where it's needed most." },
+        new { Name = "The Crescent Fellowship", TypeId = 6, Description = "A Muslim organization promoting interfaith dialogue.", Credibility = 8.5f , SocialMediaTag = "@CrescentFellowship", SocialMediaDescription = "Promoting peace and interfaith dialogue across communities." },
 
         // Universities / Research Institutions 
-
-        new { Name = "Vanguard Institute of Innovation", TypeId = 7, Description = "Pioneers advanced technologies in AI and quantum computing.", Credibility = 9.2f },
-        new { Name = "Arclight Research Center", TypeId = 7, Description = "Focuses on renewable energy breakthroughs and sustainable technologies.", Credibility = 8.8f },
-        new { Name = "Helios Institute of Space Studies", TypeId = 7, Description = "A world leader in aerospace research and planetary science.", Credibility = 9.1f },
+        new { Name = "Vanguard Institute of Innovation", TypeId = 7, Description = "Pioneers advanced technologies in AI and quantum computing.", Credibility = 9.2f, SocialMediaTag = "@VanguardInnovate", SocialMediaDescription = "Pushing the boundaries of AI and quantum tech for a better tomorrow." },
+        new { Name = "Arclight Research Center", TypeId = 7, Description = "Focuses on renewable energy breakthroughs and sustainable technologies.", Credibility = 8.8f, SocialMediaTag = "@ArclightResearch", SocialMediaDescription = " Illuminating paths to sustainable energy and ecological balance." },
+        new { Name = "Helios Institute of Space Studies", TypeId = 7, Description = "A world leader in aerospace research and planetary science.", Credibility = 9.1f, SocialMediaTag = "@HeliosSpace", SocialMediaDescription = "Exploring the cosmos and unlocking the mysteries of the universe." },
 
         // Labor Unions
-        new { Name = "United Workers", TypeId = 8, Description = "A labor union advocating for worker rights in manufacturing.", Credibility = 7.5f },
-        new { Name = "Global Labor Federation", TypeId = 8, Description = "An international union focused on promoting fair labor practices globally.", Credibility = 8.5f },
-        new { Name = "The Solidarity Movement", TypeId = 8, Description = "An activist labor union focused on workers' rights across multiple industries.", Credibility = 7.7f },
+        new { Name = "United Workers", TypeId = 8, Description = "A labor union advocating for worker rights in manufacturing.", Credibility = 7.5f, SocialMediaTag = "@UnitedWorkers", SocialMediaDescription = "Defending the dignity and rights of workers everywhere." },
+        new { Name = "Global Labor Federation", TypeId = 8, Description = "An international union focused on promoting fair labor practices globally.", Credibility = 8.5f, SocialMediaTag = "@GlobalLabor", SocialMediaDescription = "Uniting workers worldwide for fair wages and safe working conditions." },
+        new { Name = "The Solidarity Movement", TypeId = 8, Description = "An activist labor union focused on workers' rights across multiple industries.", Credibility = 7.7f, SocialMediaTag = "@SolidarityMove", SocialMediaDescription = "Standing together for workers' rights and social justice." },
 
         // Tech Startups
-        new { Name = "NeuraCore AI", TypeId = 9, Description = "A startup focused on advanced AI for medical diagnostics.", Credibility = 8.6f },
-        new { Name = "SkyLink Systems", TypeId = 9, Description = "Building next-gen satellite internet solutions.", Credibility = 7.9f },
-        new { Name = "NimbusTech Innovations", TypeId = 9, Description = "A startup focused on creating AI-powered solutions for the healthcare industry.", Credibility = 8.3f },
-        new { Name = "ByteForge Labs", TypeId = 9, Description = "Developing cutting-edge virtual reality experiences for education and entertainment.", Credibility = 8.7f },
-        new { Name = "GreenSpire Technologies", TypeId = 9, Description = "A clean-tech startup focused on sustainable energy solutions for urban environments.", Credibility = 8.5f },
+        new { Name = "NeuraCore AI", TypeId = 9, Description = "A startup focused on advanced AI for medical diagnostics.", Credibility = 8.6f, SocialMediaTag = "@NeuraCore", SocialMediaDescription = "Revolutionizing healthcare with cutting-edge AI diagnostics." },
+        new { Name = "SkyLink Systems", TypeId = 9, Description = "Building next-gen satellite internet solutions.", Credibility = 7.9f, SocialMediaTag = "@SkyLinkSystems", SocialMediaDescription = "Connecting the world with next-gen satellite internet solutions." },
+        new { Name = "NimbusTech Innovations", TypeId = 9, Description = "A startup focused on creating AI-powered solutions for the healthcare industry.", Credibility = 8.3f , SocialMediaTag = "@NimbusTech", SocialMediaDescription = "Innovating healthcare with AI-powered solutions for better patient outcomes." },
+        new { Name = "ByteForge Labs", TypeId = 9, Description = "Developing cutting-edge virtual reality experiences for education and entertainment.", Credibility = 8.7f, SocialMediaTag = "@ByteForgeLabs", SocialMediaDescription = "Immersive VR experiences that transform education and entertainment."},
+        new { Name = "GreenSpire Technologies", TypeId = 9, Description = "A clean-tech startup focused on sustainable energy solutions for urban environments.", Credibility = 8.5f, SocialMediaTag = "@GreenSpireTech", SocialMediaDescription = "Empowering cities with sustainable energy solutions for a greener future." },
 
         // Charity/Foundation
-        new { Name = "Lifeline Initiative", TypeId = 10, Description = "A charity focused on disaster relief and rebuilding efforts around the world.", Credibility = 9.0f },
-        new { Name = "Hands Together", TypeId = 10, Description = "Supports global initiatives for poverty alleviation and social equality.", Credibility = 8.3f },
-        new { Name = "World Healing Foundation", TypeId = 10, Description = "Focuses on providing clean water and sanitation to communities in need.", Credibility = 8.7f },
+        new { Name = "Lifeline Initiative", TypeId = 10, Description = "A charity focused on disaster relief and rebuilding efforts around the world.", Credibility = 9.0f, SocialMediaTag = "@LifelineInit", SocialMediaDescription = "Providing hope and support in times of crisis. Your lifeline to those in need." },
+        new { Name = "Hands Together", TypeId = 10, Description = "Supports global initiatives for poverty alleviation and social equality.", Credibility = 8.3f, SocialMediaTag = "@HandsTogether", SocialMediaDescription = "Combating poverty and fostering equality across the globe.", },
+        new { Name = "World Healing Foundation", TypeId = 10, Description = "Focuses on providing clean water and sanitation to communities in need.", Credibility = 8.7f, SocialMediaTag = "@WorldHealing", SocialMediaDescription = "Delivering clean water and sanitation to those in greatest need.", },
     };
 
         foreach (var org in defaultOrganizations)
@@ -482,11 +505,13 @@ public class DatabaseManager : MonoBehaviour
             if (_connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Organizations WHERE Name = ?", org.Name) == 0)
             {
                 _connection.Execute(
-                    "INSERT INTO Organizations (Name, TypeId, Description, Credibility) VALUES (?, ?, ?, ?)",
+                    "INSERT INTO Organizations (Name, TypeId, Description, Credibility, SocialMediaTag, SocialMediaDescription) VALUES (?, ?, ?, ?, ?, ?)",
                     org.Name,
                     org.TypeId,
                     org.Description,
-                    Math.Round(org.Credibility, 1)
+                    Math.Round(org.Credibility, 1),
+                    org.SocialMediaTag,
+                    org.SocialMediaDescription
                 );
             }
         }
@@ -494,142 +519,665 @@ public class DatabaseManager : MonoBehaviour
 
         var defaultCharacters = new[]
 {
-        // Sentinel Dynamics (Pro-Corporate, Pro-Government, Nationalist)
-        new { Name = "James Calloway", Profession = "Defense Consultant", Affilation = 1, Credibility = 7.2f, Tier = 2},
-        new { Name = "Rebecca Monroe", Profession = "Military Strategist", Affilation = 1, Credibility = 6.5f, Tier = 1},
+    // Sentinel Dynamics (Pro-Corporate, Pro-Government, Nationalist)
+    new {
+        Name = "James Calloway",
+        Profession = "Defense Consultant",
+        SocialMediaTag = "@JamesCalloway",
+        SocialMediaDescription = "Defense Consultant at @SentinelDynamics. Sharing insights on security.",
+        Affilation = 1,
+        Credibility = 7.2f,
+        Tier = 2
+    },
+    new {
+        Name = "Rebecca Monroe",
+        Profession = "Military Strategist",
+        SocialMediaTag = "@RebeccaMonroe",
+        SocialMediaDescription = "Military Strategist at @SentinelDynamics. Analyzing tactics and strategy.",
+        Affilation = 1,
+        Credibility = 6.5f,
+        Tier = 1
+    },
 
-        // Solaris Innovations (Pro-Environment, Techno-Optimist, Pro-Science)
-        new { Name = "Ethan Caldwell", Profession = "Renewable Energy Scientist", Affilation = 2, Credibility = 8.9f, Tier = 3},
-        new { Name = "Nadia Foster", Profession = "Sustainability Consultant", Affilation = 2, Credibility = 7.8f, Tier = 2},
+    // Solaris Innovations (Pro-Environment, Techno-Optimist, Pro-Science)
+    new {
+        Name = "Ethan Caldwell",
+        Profession = "Renewable Energy Scientist",
+        SocialMediaTag = "@EthanCaldwell",
+        SocialMediaDescription = "Renewable Energy Scientist at @SolarisInnovations. Passionate about green tech.",
+        Affilation = 2,
+        Credibility = 8.9f,
+        Tier = 3
+    },
+    new {
+        Name = "Nadia Foster",
+        Profession = "Sustainability Consultant",
+        SocialMediaTag = "@NadiaFoster",
+        SocialMediaDescription = "Sustainability Consultant at @SolarisInnovations. Advocating for a greener future.",
+        Affilation = 2,
+        Credibility = 7.8f,
+        Tier = 2
+    },
 
-        // CoreX Minerals (Pro-Corporate, Anti-Environment)
-        new { Name = "Douglas Hayes", Profession = "Mining Executive", Affilation = 3, Credibility = 6.3f, Tier = 2},
-        new { Name = "Megan Russell", Profession = "Resource Extraction Analyst", Affilation = 3, Credibility = 5.7f, Tier = 1},
+    // CoreX Minerals (Pro-Corporate, Anti-Environment)
+    new {
+        Name = "Douglas Hayes",
+        Profession = "Mining Executive",
+        SocialMediaTag = "@DouglasHayes",
+        SocialMediaDescription = "Mining Executive at @CoreXGlobal. Discussing industry trends.",
+        Affilation = 3,
+        Credibility = 6.3f,
+        Tier = 2
+    },
+    new {
+        Name = "Megan Russell",
+        Profession = "Resource Extraction Analyst",
+        SocialMediaTag = "@MeganRussell",
+        SocialMediaDescription = "Resource Extraction Analyst at @CoreXGlobal. Examining market dynamics.",
+        Affilation = 3,
+        Credibility = 5.7f,
+        Tier = 1
+    },
 
-        // Summit Capital Group (Elitist, Pro-Corporate, Anti-Government)
-        new { Name = "Victor Langley", Profession = "Investment Tycoon", Affilation = 4, Credibility = 4.1f, Tier = 3},
-        new { Name = "Charlotte Brennan", Profession = "Economic Strategist", Affilation = 4, Credibility = 4.8f, Tier = 2},
+    // Summit Capital Group (Elitist, Pro-Corporate, Anti-Government)
+    new {
+        Name = "Victor Langley",
+        Profession = "Investment Tycoon",
+        SocialMediaTag = "@VictorLangley",
+        SocialMediaDescription = "Investment Tycoon at @SummitCapital. Sharing high finance insights.",
+        Affilation = 4,
+        Credibility = 4.1f,
+        Tier = 3
+    },
+    new {
+        Name = "Charlotte Brennan",
+        Profession = "Economic Strategist",
+        SocialMediaTag = "@CharlotteBrennan",
+        SocialMediaDescription = "Economic Strategist at @SummitCapital. Breaking down market forces.",
+        Affilation = 4,
+        Credibility = 4.8f,
+        Tier = 2
+    },
 
-        // GreenPulse Movement (Pro-Environment, Socialist)
-        new { Name = "Cassandra Yu", Profession = "Climate Activist", Affilation = 5, Credibility = 8.3f, Tier = 2},
-        new { Name = "Liam Hutchinson", Profession = "Wildlife Conservationist", Affilation = 5, Credibility = 7.6f, Tier = 2},
+    // GreenPulse Movement (Pro-Environment, Socialist)
+    new {
+        Name = "Cassandra Yu",
+        Profession = "Climate Activist",
+        SocialMediaTag = "@CassandraYu",
+        SocialMediaDescription = "Climate Activist at @GreenPulse. Rallying for our planet.",
+        Affilation = 5,
+        Credibility = 8.3f,
+        Tier = 2
+    },
+    new {
+        Name = "Liam Hutchinson",
+        Profession = "Wildlife Conservationist",
+        SocialMediaTag = "@LiamHutchinson",
+        SocialMediaDescription = "Wildlife Conservationist at @GreenPulse. Protecting nature daily.",
+        Affilation = 5,
+        Credibility = 7.6f,
+        Tier = 2
+    },
 
-        // Humanity’s Voice Coalition (Pro-Government, Globalist)
-        new { Name = "Amir Rahman", Profession = "Human Rights Lawyer", Affilation = 6, Credibility = 8.2f, Tier = 3},
-        new { Name = "Sophia Martinez", Profession = "NGO Coordinator", Affilation = 6, Credibility = 7.9f, Tier = 2},
+    // Humanity’s Voice Coalition (Pro-Government, Globalist)
+    new {
+        Name = "Amir Rahman",
+        Profession = "Human Rights Lawyer",
+        SocialMediaTag = "@AmirRahman",
+        SocialMediaDescription = "Human Rights Lawyer at @HumanitysVoice. Advocating for justice.",
+        Affilation = 6,
+        Credibility = 8.2f,
+        Tier = 3
+    },
+    new {
+        Name = "Sophia Martinez",
+        Profession = "NGO Coordinator",
+        SocialMediaTag = "@SophiaMartinez",
+        SocialMediaDescription = "NGO Coordinator at @HumanitysVoice. Pushing for global reform.",
+        Affilation = 6,
+        Credibility = 7.9f,
+        Tier = 2
+    },
 
-        // Unity Beyond Borders (Mediating Peace Treaties)
-        new { Name = "Jonathan Wells", Profession = "Conflict Resolution Expert", Affilation = 7, Credibility = 8.2f, Tier = 2},
-        new { Name = "Amina Rahman", Profession = "International Relations Specialist", Affilation = 7, Credibility = 7.5f, Tier = 2},
+    // Unity Beyond Borders (Mediating Peace Treaties)
+    new {
+        Name = "Jonathan Wells",
+        Profession = "Conflict Resolution Expert",
+        SocialMediaTag = "@JonathanWells",
+        SocialMediaDescription = "Conflict Resolution Expert at @UnityBorders. Working for global peace.",
+        Affilation = 7,
+        Credibility = 8.2f,
+        Tier = 2
+    },
+    new {
+        Name = "Amina Rahman",
+        Profession = "International Relations Specialist",
+        SocialMediaTag = "@AminaRahman",
+        SocialMediaDescription = "International Relations Specialist at @UnityBorders. Promoting global cooperation.",
+        Affilation = 7,
+        Credibility = 7.5f,
+        Tier = 2
+    },
 
-        // Progressive Alliance (Climate Reform Party)
-        new { Name = "Marissa Cohen", Profession = "Environmental Policy Advisor", Affilation = 8, Credibility = 7.8f, Tier = 2},
-        new { Name = "Felix Grant", Profession = "Senator", Affilation = 8, Credibility = 6.9f, Tier = 2},
+    // Progressive Alliance (Climate Reform Party)
+    new {
+        Name = "Marissa Cohen",
+        Profession = "Environmental Policy Advisor",
+        SocialMediaTag = "@MarissaCohen",
+        SocialMediaDescription = "Environmental Policy Advisor at @ProgressiveAlliance. Shaping climate policy.",
+        Affilation = 8,
+        Credibility = 7.8f,
+        Tier = 2
+    },
+    new {
+        Name = "Felix Grant",
+        Profession = "Senator",
+        SocialMediaTag = "@FelixGrant",
+        SocialMediaDescription = "Senator at @ProgressiveAlliance. Balancing politics with green initiatives.",
+        Affilation = 8,
+        Credibility = 6.9f,
+        Tier = 2
+    },
 
-        // Liberty Front (Libertarian, Anti-Government)
-        new { Name = "Travis Beaumont", Profession = "Political Commentator", Affilation = 9, Credibility = 6.4f, Tier = 1},
-        new { Name = "Katie Hendricks", Profession = "Policy Analyst", Affilation = 9, Credibility = 6.8f, Tier = 2},
+    // Liberty Front (Libertarian, Anti-Government)
+    new {
+        Name = "Travis Beaumont",
+        Profession = "Political Commentator",
+        SocialMediaTag = "@TravisBeaumont",
+        SocialMediaDescription = "Political Commentator at @LibertyFront. Offering a libertarian perspective.",
+        Affilation = 9,
+        Credibility = 6.4f,
+        Tier = 1
+    },
+    new {
+        Name = "Katie Hendricks",
+        Profession = "Policy Analyst",
+        SocialMediaTag = "@KatieHendricks",
+        SocialMediaDescription = "Policy Analyst at @LibertyFront. Dissecting government policies daily.",
+        Affilation = 9,
+        Credibility = 6.8f,
+        Tier = 2
+    },
 
-        // Social Unity (Populist Economic Party)
-        new { Name = "Carlos Mendes", Profession = "Grassroots Organizer", Affilation = 10, Credibility = 5.6f, Tier = 1},
-        new { Name = "Eleanor Hayes", Profession = "Labor Economist", Affilation = 10, Credibility = 6.4f, Tier = 2},
+    // Social Unity (Populist Economic Party)
+    new {
+        Name = "Carlos Mendes",
+        Profession = "Grassroots Organizer",
+        SocialMediaTag = "@CarlosMendes",
+        SocialMediaDescription = "Grassroots Organizer at @SocialUnity. Empowering the community one tweet at a time.",
+        Affilation = 10,
+        Credibility = 5.6f,
+        Tier = 1
+    },
+    new {
+        Name = "Eleanor Hayes",
+        Profession = "Labor Economist",
+        SocialMediaTag = "@EleanorHayes",
+        SocialMediaDescription = "Labor Economist at @SocialUnity. Breaking down economic policies for workers.",
+        Affilation = 10,
+        Credibility = 6.4f,
+        Tier = 2
+    },
 
-        // Daily Spectrum (Investigative Media)
-        new { Name = "David Blackwood", Profession = "Investigative Journalist", Affilation = 11, Credibility = 8.9f, Tier = 3},
-        new { Name = "Samantha Ortega", Profession = "Political Correspondent", Affilation = 11, Credibility = 8.1f, Tier = 2},
+    // Daily Spectrum (Investigative Media)
+    new {
+        Name = "David Blackwood",
+        Profession = "Investigative Journalist",
+        SocialMediaTag = "@DavidBlackwood",
+        SocialMediaDescription = "Investigative Journalist at @DailySpectrum. Uncovering hidden truths.",
+        Affilation = 11,
+        Credibility = 8.9f,
+        Tier = 3
+    },
+    new {
+        Name = "Samantha Ortega",
+        Profession = "Political Correspondent",
+        SocialMediaTag = "@SamanthaOrtega",
+        SocialMediaDescription = "Political Correspondent at @DailySpectrum. Reporting the pulse of politics.",
+        Affilation = 11,
+        Credibility = 8.1f,
+        Tier = 2
+    },
 
-        // Breaking Lens (Populist, Conspiracy-Minded)
-        new { Name = "Derek Malone", Profession = "Investigative Blogger", Affilation = 12, Credibility = 5.1f, Tier = 1},
-        new { Name = "Jessica Vaughn", Profession = "Freelance Journalist", Affilation = 12, Credibility = 5.5f, Tier = 2},
+    // Breaking Lens (Populist, Conspiracy-Minded)
+    new {
+        Name = "Derek Malone",
+        Profession = "Investigative Blogger",
+        SocialMediaTag = "@DerekMalone",
+        SocialMediaDescription = "Investigative Blogger at @BreakingLens. Questioning the mainstream narrative.",
+        Affilation = 12,
+        Credibility = 5.1f,
+        Tier = 1
+    },
+    new {
+        Name = "Jessica Vaughn",
+        Profession = "Freelance Journalist",
+        SocialMediaTag = "@JessicaVaughn",
+        SocialMediaDescription = "Freelance Journalist at @BreakingLens. Exposing controversies with a keen eye.",
+        Affilation = 12,
+        Credibility = 5.5f,
+        Tier = 2
+    },
 
-        // Chronicle Insight (Digital-First Journalism)
-        new { Name = "Raj Patel", Profession = "Digital Editor", Affilation = 13, Credibility = 7.4f, Tier = 2},
-        new { Name = "Melissa Cho", Profession = "Data Journalist", Affilation = 13, Credibility = 7.9f, Tier = 2},
+    // Chronicle Insight (Digital-First Journalism)
+    new {
+        Name = "Raj Patel",
+        Profession = "Digital Editor",
+        SocialMediaTag = "@RajPatel",
+        SocialMediaDescription = "Digital Editor at @ChronicleInsight. Curating stories from the digital realm.",
+        Affilation = 13,
+        Credibility = 7.4f,
+        Tier = 2
+    },
+    new {
+        Name = "Melissa Cho",
+        Profession = "Data Journalist",
+        SocialMediaTag = "@MelissaCho",
+        SocialMediaDescription = "Data Journalist at @ChronicleInsight. Translating numbers into narratives.",
+        Affilation = 13,
+        Credibility = 7.9f,
+        Tier = 2
+    },
 
-        // Green Vanguard (Pro-Environment, Techno-Pessimist)
-        new { Name = "Elena Radcliffe", Profession = "Eco-Warrior", Affilation = 14, Credibility = 6.2f, Tier = 1},
-        new { Name = "Benjamin Holt", Profession = "Climate Researcher", Affilation = 14, Credibility = 6.5f, Tier = 2},
+    // Green Vanguard (Pro-Environment, Techno-Pessimist)
+    new {
+        Name = "Elena Radcliffe",
+        Profession = "Eco-Warrior",
+        SocialMediaTag = "@ElenaRadcliffe",
+        SocialMediaDescription = "Eco-Warrior at @GreenVanguard. Speaking out on environmental issues.",
+        Affilation = 14,
+        Credibility = 6.2f,
+        Tier = 1
+    },
+    new {
+        Name = "Benjamin Holt",
+        Profession = "Climate Researcher",
+        SocialMediaTag = "@BenjaminHolt",
+        SocialMediaDescription = "Climate Researcher at @GreenVanguard. Investigating climate change impacts.",
+        Affilation = 14,
+        Credibility = 6.5f,
+        Tier = 2
+    },
 
-        // Parity Now! (Gender Equality Movement)
-        new { Name = "Zoe Sanders", Profession = "Women's Rights Advocate", Affilation = 15, Credibility = 8.2f, Tier = 2},
-        new { Name = "Maya Delgado", Profession = "Activist", Affilation = 15, Credibility = 7.6f, Tier = 2},
+    // Parity Now! (Gender Equality Movement)
+    new {
+        Name = "Zoe Sanders",
+        Profession = "Women's Rights Advocate",
+        SocialMediaTag = "@ZoeSanders",
+        SocialMediaDescription = "Women's Rights Advocate at @ParityNow! Championing gender equality.",
+        Affilation = 15,
+        Credibility = 8.2f,
+        Tier = 2
+    },
+    new {
+        Name = "Maya Delgado",
+        Profession = "Activist",
+        SocialMediaTag = "@MayaDelgado",
+        SocialMediaDescription = "Activist at @ParityNow! Speaking up for social justice.",
+        Affilation = 15,
+        Credibility = 7.6f,
+        Tier = 2
+    },
 
-        // Justice Impact (Anti-Corporate Activism)
-        new { Name = "Liam Novak", Profession = "Corporate Watchdog", Affilation = 16, Credibility = 7.0f, Tier = 2},
-        new { Name = "Olivia Tran", Profession = "Legal Analyst", Affilation = 16, Credibility = 7.3f, Tier = 2},
+    // Justice Impact (Anti-Corporate Activism)
+    new {
+        Name = "Liam Novak",
+        Profession = "Corporate Watchdog",
+        SocialMediaTag = "@LiamNovak",
+        SocialMediaDescription = "Corporate Watchdog at @JusticeImpact. Holding big business accountable.",
+        Affilation = 16,
+        Credibility = 7.0f,
+        Tier = 2
+    },
+    new {
+        Name = "Olivia Tran",
+        Profession = "Legal Analyst",
+        SocialMediaTag = "@OliviaTran",
+        SocialMediaDescription = "Legal Analyst at @JusticeImpact. Breaking down corporate legal battles.",
+        Affilation = 16,
+        Credibility = 7.3f,
+        Tier = 2
+    },
 
-        // Order of the Silver Cross (Religious Fundamentalist, Pro-Government)
-        new { Name = "Father Michael Graves", Profession = "Catholic Bishop", Affilation = 17, Credibility = 8.4f, Tier = 3},
-        new { Name = "Sister Angela Turner", Profession = "Missionary", Affilation = 17, Credibility = 7.9f, Tier = 2},
+    // Order of the Silver Cross (Religious Fundamentalist, Pro-Government)
+    new {
+        Name = "Father Michael Graves",
+        Profession = "Catholic Bishop",
+        SocialMediaTag = "@MichaelGraves",
+        SocialMediaDescription = "Catholic Bishop at @SilverCross. Sharing faith & insights.",
+        Affilation = 17,
+        Credibility = 8.4f,
+        Tier = 3
+    },
+    new {
+        Name = "Sister Angela Turner",
+        Profession = "Missionary",
+        SocialMediaTag = "@AngelaTurner",
+        SocialMediaDescription = "Missionary at @SilverCross. Spreading compassion and hope.",
+        Affilation = 17,
+        Credibility = 7.9f,
+        Tier = 2
+    },
 
-        // The Crescent Fellowship (Interfaith Muslim Organization)
-        new { Name = "Yusuf Al-Farid", Profession = "Interfaith Diplomat", Affilation = 18, Credibility = 8.7f, Tier = 3},
-        new { Name = "Fatima Hassan", Profession = "Community Organizer", Affilation = 18, Credibility = 8.3f, Tier = 2},
+    // The Crescent Fellowship (Interfaith Muslim Organization)
+    new {
+        Name = "Yusuf Al-Farid",
+        Profession = "Interfaith Diplomat",
+        SocialMediaTag = "@YusufAlFarid",
+        SocialMediaDescription = "Interfaith Diplomat at @CrescentFellowship. Promoting unity through dialogue.",
+        Affilation = 18,
+        Credibility = 8.7f,
+        Tier = 3
+    },
+    new {
+        Name = "Fatima Hassan",
+        Profession = "Community Organizer",
+        SocialMediaTag = "@FatimaHassan",
+        SocialMediaDescription = "Community Organizer at @CrescentFellowship. Amplifying voices for change.",
+        Affilation = 18,
+        Credibility = 8.3f,
+        Tier = 2
+    },
 
-        // Vanguard Institute of Innovation (AI and Quantum Research)
-        new { Name = "Elliot West", Profession = "AI Ethics Researcher", Affilation = 19, Credibility = 9.1f, Tier = 3},
-        new { Name = "Dr. Susan Caldwell", Profession = "Quantum Computing Specialist", Affilation = 19, Credibility = 9.3f, Tier = 3},
-        
-        // Arclight Research Center (Renewable Energy)
-        new { Name = "Martin Lowe", Profession = "Renewable Energy Scientist", Affilation = 20, Credibility = 8.5f, Tier = 3},
-        new { Name = "Elena Fischer", Profession = "Sustainable Tech Engineer", Affilation = 20, Credibility = 8.7f, Tier = 3},
+    // Vanguard Institute of Innovation (AI and Quantum Research)
+    new {
+        Name = "Elliot West",
+        Profession = "AI Ethics Researcher",
+        SocialMediaTag = "@ElliotWest",
+        SocialMediaDescription = "AI Ethics Researcher at @VanguardInnovate. Examining the future of tech.",
+        Affilation = 19,
+        Credibility = 9.1f,
+        Tier = 3
+    },
+    new {
+        Name = "Dr. Susan Caldwell",
+        Profession = "Quantum Computing Specialist",
+        SocialMediaTag = "@SusanCaldwell",
+        SocialMediaDescription = "Quantum Computing Specialist at @VanguardInnovate. Decoding quantum innovations.",
+        Affilation = 19,
+        Credibility = 9.3f,
+        Tier = 3
+    },
 
-        // Helios Institute of Space Studies (Space Exploration)
-        new { Name = "Dr. Alan Reyes", Profession = "Astrophysicist", Affilation = 21, Credibility = 9.0f, Tier = 3},
-        new { Name = "Sophia Kim", Profession = "Aerospace Engineer", Affilation = 21, Credibility = 8.9f, Tier = 3},
+    // Arclight Research Center (Renewable Energy)
+    new {
+        Name = "Martin Lowe",
+        Profession = "Renewable Energy Scientist",
+        SocialMediaTag = "@MartinLowe",
+        SocialMediaDescription = "Renewable Energy Scientist at @ArclightResearch. Pioneering sustainable energy solutions.",
+        Affilation = 20,
+        Credibility = 8.5f,
+        Tier = 3
+    },
+    new {
+        Name = "Elena Fischer",
+        Profession = "Sustainable Tech Engineer",
+        SocialMediaTag = "@ElenaFischer",
+        SocialMediaDescription = "Sustainable Tech Engineer at @ArclightResearch. Innovating for a greener world.",
+        Affilation = 20,
+        Credibility = 8.7f,
+        Tier = 3
+    },
 
-        // United Workers (Manufacturing Labor Union)
-        new { Name = "Jack Mitchell", Profession = "Union Organizer", Affilation = 22, Credibility = 7.6f, Tier = 2},
-        new { Name = "Rebecca Lin", Profession = "Factory Worker Representative", Affilation = 22, Credibility = 7.3f, Tier = 2},
+    // Helios Institute of Space Studies (Space Exploration)
+    new {
+        Name = "Dr. Alan Reyes",
+        Profession = "Astrophysicist",
+        SocialMediaTag = "@AlanReyes",
+        SocialMediaDescription = "Astrophysicist at @HeliosSpace. Exploring space one discovery at a time.",
+        Affilation = 21,
+        Credibility = 9.0f,
+        Tier = 3
+    },
+    new {
+        Name = "Sophia Kim",
+        Profession = "Aerospace Engineer",
+        SocialMediaTag = "@SophiaKim",
+        SocialMediaDescription = "Aerospace Engineer at @HeliosSpace. Designing the future of space travel.",
+        Affilation = 21,
+        Credibility = 8.9f,
+        Tier = 3
+    },
 
-        // Global Labor Federation (International Union)
-        new { Name = "Hector Morales", Profession = "Union Representative", Affilation = 23, Credibility = 8.1f, Tier = 3},
-        new { Name = "Maria Vasquez", Profession = "Human Rights Advocate", Affilation = 23, Credibility = 8.4f, Tier = 3},
+    // United Workers (Manufacturing Labor Union)
+    new {
+        Name = "Jack Mitchell",
+        Profession = "Union Organizer",
+        SocialMediaTag = "@JackMitchell",
+        SocialMediaDescription = "Union Organizer at @UnitedWorkers. Fighting for worker rights.",
+        Affilation = 22,
+        Credibility = 7.6f,
+        Tier = 2
+    },
+    new {
+        Name = "Rebecca Lin",
+        Profession = "Factory Worker Representative",
+        SocialMediaTag = "@RebeccaLin",
+        SocialMediaDescription = "Factory Worker Rep at @UnitedWorkers. Amplifying voices from the shop floor.",
+        Affilation = 22,
+        Credibility = 7.3f,
+        Tier = 2
+    },
 
-        // The Solidarity Movement (Activist Union)
-        new { Name = "Jamal Edwards", Profession = "Strike Coordinator", Affilation = 24, Credibility = 7.2f, Tier = 2},
-        new { Name = "Hannah Weiss", Profession = "Labor Rights Journalist", Affilation = 24, Credibility = 7.8f, Tier = 2},
-        
-        // NeuraCore AI (Techno-Optimist, Pro-Science)
-        new { Name = "Dr. Alan Voss", Profession = "AI Researcher", Affilation = 25, Credibility = 9.1f, Tier = 3},
-        new { Name = "Samantha Lin", Profession = "Machine Learning Engineer", Affilation = 25, Credibility = 8.5f, Tier = 2},
+    // Global Labor Federation (International Union)
+    new {
+        Name = "Hector Morales",
+        Profession = "Union Representative",
+        SocialMediaTag = "@HectorMorales",
+        SocialMediaDescription = "Union Representative at @GlobalLabor. Advocating for fair labor practices.",
+        Affilation = 23,
+        Credibility = 8.1f,
+        Tier = 3
+    },
+    new {
+        Name = "Maria Vasquez",
+        Profession = "Human Rights Advocate",
+        SocialMediaTag = "@MariaVasquez",
+        SocialMediaDescription = "Human Rights Advocate at @GlobalLabor. Speaking out for workers' rights.",
+        Affilation = 23,
+        Credibility = 8.4f,
+        Tier = 3
+    },
 
-        // SkyLink Systems (Satellite Internet Startup)
-        new { Name = "Ethan Caldwell", Profession = "Satellite Engineer", Affilation = 26, Credibility = 7.7f, Tier = 2},
-        new { Name = "Nadia Blake", Profession = "Telecommunications Specialist", Affilation = 26, Credibility = 8.0f, Tier = 2},
+    // The Solidarity Movement (Activist Union)
+    new {
+        Name = "Jamal Edwards",
+        Profession = "Strike Coordinator",
+        SocialMediaTag = "@JamalEdwards",
+        SocialMediaDescription = "Strike Coordinator at @SolidarityMove. Organizing for labor justice.",
+        Affilation = 24,
+        Credibility = 7.2f,
+        Tier = 2
+    },
+    new {
+        Name = "Hannah Weiss",
+        Profession = "Labor Rights Journalist",
+        SocialMediaTag = "@HannahWeiss",
+        SocialMediaDescription = "Labor Rights Journalist at @SolidarityMove. Reporting on worker struggles.",
+        Affilation = 24,
+        Credibility = 7.8f,
+        Tier = 2
+    },
 
-        // NimbusTech Innovations (AI Healthcare Startup)
-        new { Name = "Dr. Adrian Wells", Profession = "AI Medical Researcher", Affilation = 27, Credibility = 8.4f, Tier = 3},
-        new { Name = "Lisa Cooper", Profession = "Health Tech Developer", Affilation = 27, Credibility = 8.2f, Tier = 3},
+    // NeuraCore AI (Techno-Optimist, Pro-Science)
+    new {
+        Name = "Dr. Alan Voss",
+        Profession = "AI Researcher",
+        SocialMediaTag = "@AlanVoss",
+        SocialMediaDescription = "AI Researcher at @NeuraCore. Exploring breakthroughs in artificial intelligence.",
+        Affilation = 25,
+        Credibility = 9.1f,
+        Tier = 3
+    },
+    new {
+        Name = "Samantha Lin",
+        Profession = "Machine Learning Engineer",
+        SocialMediaTag = "@SamanthaLin",
+        SocialMediaDescription = "Machine Learning Engineer at @NeuraCore. Innovating with data and algorithms.",
+        Affilation = 25,
+        Credibility = 8.5f,
+        Tier = 2
+    },
 
-        // ByteForge Labs (VR Development)
-        new { Name = "Cody Ramirez", Profession = "VR Experience Designer", Affilation = 28, Credibility = 8.6f, Tier = 3},
-        new { Name = "Tina Song", Profession = "Game Developer", Affilation = 28, Credibility = 8.3f, Tier = 3},
+    // SkyLink Systems (Satellite Internet Startup)
+    new {
+        Name = "Ethan Caldwell",
+        Profession = "Satellite Engineer",
+        SocialMediaTag = "@EthanCaldwell",
+        SocialMediaDescription = "Satellite Engineer at @SkyLinkSystems. Connecting the world from above.",
+        Affilation = 26,
+        Credibility = 7.7f,
+        Tier = 2
+    },
+    new {
+        Name = "Nadia Blake",
+        Profession = "Telecommunications Specialist",
+        SocialMediaTag = "@NadiaBlake",
+        SocialMediaDescription = "Telecommunications Specialist at @SkyLinkSystems. Ensuring global connectivity.",
+        Affilation = 26,
+        Credibility = 8.0f,
+        Tier = 2
+    },
 
-        // Lifeline Initiative (Disaster Relief Charity)
-        new { Name = "Daniel Harper", Profession = "Humanitarian Coordinator", Affilation = 30, Credibility = 9.0f, Tier = 3},
-        new { Name = "Olivia Bennett", Profession = "Relief Logistics Manager", Affilation = 30, Credibility = 8.8f, Tier = 3},
+    // NimbusTech Innovations (AI Healthcare Startup)
+    new {
+        Name = "Dr. Adrian Wells",
+        Profession = "AI Medical Researcher",
+        SocialMediaTag = "@AdrianWells",
+        SocialMediaDescription = "AI Medical Researcher at @NimbusTech. Merging tech with healthcare.",
+        Affilation = 27,
+        Credibility = 8.4f,
+        Tier = 3
+    },
+    new {
+        Name = "Lisa Cooper",
+        Profession = "Health Tech Developer",
+        SocialMediaTag = "@LisaCooper",
+        SocialMediaDescription = "Health Tech Developer at @NimbusTech. Building the future of medicine.",
+        Affilation = 27,
+        Credibility = 8.2f,
+        Tier = 3
+    },
 
-        // Hands Together - Poverty Alleviation and Social Equality
-        new { Name = "Margaret Dawson", Profession = "Community Organizer", Affilation = 31, Credibility = 8.4f, Tier = 2},
-        new { Name = "Omar Sinclair", Profession = "Policy Advocate", Affilation = 31, Credibility = 8.2f, Tier = 2},
+    // ByteForge Labs (VR Development)
+    new {
+        Name = "Cody Ramirez",
+        Profession = "VR Experience Designer",
+        SocialMediaTag = "@CodyRamirez",
+        SocialMediaDescription = "VR Experience Designer at @ByteForgeLabs. Crafting immersive digital adventures.",
+        Affilation = 28,
+        Credibility = 8.6f,
+        Tier = 3
+    },
+    new {
+        Name = "Tina Song",
+        Profession = "Game Developer",
+        SocialMediaTag = "@TinaSong",
+        SocialMediaDescription = "Game Developer at @ByteForgeLabs. Blending creativity and technology.",
+        Affilation = 28,
+        Credibility = 8.3f,
+        Tier = 3
+    },
+    
+    // GreenSpire Technologies 
+    new {
+        Name = "Elena Vargas",
+        Profession = "Sustainability Engineer",
+        SocialMediaTag = "@ElenaVargas",
+        SocialMediaDescription = "Sustainability Engineer at @GreenSpireTech. Designing clean energy solutions for a sustainable future.",
+        Affilation = 29,
+        Credibility = 8.2f,
+        Tier = 3
+    },
 
-        // World Healing Foundation - Clean Water & Sanitation Efforts
-        new { Name = "Dr. Samuel Carter", Profession = "Water Sanitation Expert", Affilation = 32, Credibility = 8.8f, Tier = 1},
-        new { Name = "Isabella Mendez", Profession = "Humanitarian Coordinator", Affilation = 32, Credibility = 8.6f, Tier = 2}
+    new {
+        Name = "Jared Mitchell",
+        Profession = "Urban Planner",
+        SocialMediaTag = "@JaredMitchell",
+        SocialMediaDescription = "Urban Planner at @GreenSpireTech. Transforming cities with green technologies for a brighter tomorrow.",
+        Affilation = 29,
+        Credibility = 7.6f,
+        Tier = 2
+    },
+
+    
+    // Lifeline Initiative (Disaster Relief Charity)
+    new {
+        Name = "Daniel Harper",
+        Profession = "Humanitarian Coordinator",
+        SocialMediaTag = "@DanielHarper",
+        SocialMediaDescription = "Humanitarian Coordinator at @LifelineInit. Organizing disaster relief with heart.",
+        Affilation = 30,
+        Credibility = 9.0f,
+        Tier = 3
+    },
+    new {
+        Name = "Olivia Bennett",
+        Profession = "Relief Logistics Manager",
+        SocialMediaTag = "@OliviaBennett",
+        SocialMediaDescription = "Relief Logistics Manager at @LifelineInit. Ensuring aid gets to where it's needed.",
+        Affilation = 30,
+        Credibility = 8.8f,
+        Tier = 3
+    },
+
+    // Hands Together - Poverty Alleviation and Social Equality
+    new {
+        Name = "Margaret Dawson",
+        Profession = "Community Organizer",
+        SocialMediaTag = "@MargaretDawson",
+        SocialMediaDescription = "Community Organizer at @HandsTogether. Championing social equality.",
+        Affilation = 31,
+        Credibility = 8.4f,
+        Tier = 2
+    },
+    new {
+        Name = "Omar Sinclair",
+        Profession = "Policy Advocate",
+        SocialMediaTag = "@OmarSinclair",
+        SocialMediaDescription = "Policy Advocate at @HandsTogether. Pushing for reforms that uplift communities.",
+        Affilation = 31,
+        Credibility = 8.2f,
+        Tier = 2
+    },
+
+    // World Healing Foundation (Clean Water & Sanitation Efforts)
+    new {
+        Name = "Dr. Samuel Carter",
+        Profession = "Water Sanitation Expert",
+        SocialMediaTag = "@SamuelCarter",
+        SocialMediaDescription = "Water Sanitation Expert at @WorldHealing. Bringing clean water to those in need.",
+        Affilation = 32,
+        Credibility = 8.8f,
+        Tier = 1
+    },
+    new {
+        Name = "Isabella Mendez",
+        Profession = "Humanitarian Coordinator",
+        SocialMediaTag = "@IsabellaMendez",
+        SocialMediaDescription = "Humanitarian Coordinator at @WorldHealing. Fighting for accessible sanitation.",
+        Affilation = 32,
+        Credibility = 8.6f,
+        Tier = 2
+    }
 };
+
+
 
         foreach (var character in defaultCharacters)
         {
             _connection.Execute(
-                "INSERT INTO Characters (Name, Profession, Affilation, Credibility, Tier, LastUsedEventId) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO Characters (Name, Profession, SocialMediaTag, SocialMediaDescription, Affilation, Credibility, Tier) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 character.Name,
                 character.Profession,
+                character.SocialMediaTag,
+                character.SocialMediaDescription,
                 character.Affilation,
                 Math.Round(character.Credibility, 1),
                 character.Tier
             );
         }
+
 
         var defaultCharacterBiases = new[]
         {
@@ -822,23 +1370,30 @@ public class DatabaseManager : MonoBehaviour
             new { CharacterId = 56, BiasId = 7 }, // Tina Song -> Pro-Science
             new { CharacterId = 56, BiasId = 14 },// Tina Song -> Techno-Optimist
 
+            // GreenSpire Technologies
+            new { CharacterId = 57, BiasId = 1 }, // Elena Vargas -> Pro-Environment
+            new { CharacterId = 57, BiasId = 7 }, // Elena Vargas -> Pro-Science
+            new { CharacterId = 57, BiasId = 10 },// Elena Vargas -> Globalist
+            new { CharacterId = 58, BiasId = 1 }, // Jared Mitchell -> Pro-Environment
+            new { CharacterId = 58, BiasId = 7 }, // Jared Mitchell -> Pro-Science
+
             // Lifeline Initiative
-            new { CharacterId = 57, BiasId = 10 },// Daniel Harper -> Globalist
-            new { CharacterId = 57, BiasId = 17 },// Daniel Harper -> Socialist
-            new { CharacterId = 58, BiasId = 10 },// Olivia Bennett -> Globalist
-            new { CharacterId = 58, BiasId = 17 },// Olivia Bennett -> Socialist
+            new { CharacterId = 59, BiasId = 10 },// Daniel Harper -> Globalist
+            new { CharacterId = 59, BiasId = 17 },// Daniel Harper -> Socialist
+            new { CharacterId = 60, BiasId = 10 },// Olivia Bennett -> Globalist
+            new { CharacterId = 60, BiasId = 17 },// Olivia Bennett -> Socialist
 
             // Hands Together
-            new { CharacterId = 59, BiasId = 10 },// Margaret Dawson -> Globalist
-            new { CharacterId = 59, BiasId = 17 },// Margaret Dawson -> Socialist
-            new { CharacterId = 60, BiasId = 10 },// Omar Sinclair -> Globalist
-            new { CharacterId = 60, BiasId = 17 },// Omar Sinclair -> Socialist
+            new { CharacterId = 61, BiasId = 10 },// Margaret Dawson -> Globalist
+            new { CharacterId = 61, BiasId = 17 },// Margaret Dawson -> Socialist
+            new { CharacterId = 62, BiasId = 10 },// Omar Sinclair -> Globalist
+            new { CharacterId = 62, BiasId = 17 },// Omar Sinclair -> Socialist
 
             // World Healing Foundation
-            new { CharacterId = 61, BiasId = 10 },// Dr. Samuel Carter -> Globalist
-            new { CharacterId = 61, BiasId = 7 }, // Dr. Samuel Carter -> Pro-Science
-            new { CharacterId = 62, BiasId = 10 },// Isabella Mendez -> Globalist
-            new { CharacterId = 62, BiasId = 17 } // Isabella Mendez -> Socialist
+            new { CharacterId = 63, BiasId = 10 },// Dr. Samuel Carter -> Globalist
+            new { CharacterId = 63, BiasId = 7 }, // Dr. Samuel Carter -> Pro-Science
+            new { CharacterId = 64, BiasId = 10 },// Isabella Mendez -> Globalist
+            new { CharacterId = 64, BiasId = 17 } // Isabella Mendez -> Socialist
         };
 
 

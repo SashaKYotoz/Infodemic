@@ -49,8 +49,4 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    public void InsertSelectedWord(SelectedWords selectedWords)
-    {
-        _dbManager.InsertSelectedWord(selectedWords);
-    }
 }

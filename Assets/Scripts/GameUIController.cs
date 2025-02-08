@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -148,7 +149,7 @@ public class GameUIController : MonoBehaviour
             VisualElement fillableNewsHolder = CreateNewsHolder(post);
             fillableNewsHolder.userData = post.Id;
             fillableNewsHolder.RegisterCallback<ClickEvent>(callback =>
-                ChangeDisplayOfPanel(post.OrganizationId != null ? webArticle : socialMedia, post));
+            ChangeDisplayOfPanel(post.OrganizationId != null ? webArticle : socialMedia, post));
             newsPanel.contentContainer.Add(fillableNewsHolder);
         }
     }
@@ -187,21 +188,22 @@ public class GameUIController : MonoBehaviour
             Label articleContent = webArticle.Q<Label>("articleContent");
             Label articleTitle = webArticle.Q<Label>("articleTitle");
 
-            SetLabelText(articleContent, post.Content);
-            SetLabelText(articleTitle, DatabaseManager.Instance.GetOrganizationName(post.OrganizationId.Value));
+            SetLabelText(articleContent, post.Content, post.Id);
+            SetLabelText(articleTitle, DatabaseManager.Instance.GetOrganizationName(post.OrganizationId.Value), post.Id);
         }
         else
         {
             Label socialMediaContent = socialMedia.Q<Label>("socialMediaContent");
             Label personInfo = socialMedia.Q<Label>("personInfo");
 
-            SetLabelText(socialMediaContent, post.Content);
-            SetLabelText(personInfo, DatabaseManager.Instance.GetCharacterName(post.CharacterId.Value));
+            SetLabelText(socialMediaContent, post.Content, post.Id);
+            SetLabelText(personInfo, DatabaseManager.Instance.GetCharacterName(post.CharacterId.Value), post.Id);
         }
     }
-    private void SetLabelText(Label label, string text)
+    private void SetLabelText(Label label, string text, int postId)
     {
         label.text = text;
+        label.userData = postId;
         if (originalTextPerLabel.ContainsKey(label))
         {
             originalTextPerLabel[label] = text;
@@ -210,6 +212,7 @@ public class GameUIController : MonoBehaviour
         {
             originalTextPerLabel.Add(label, text);
         }
+        LoadHighlights(label);
     }
 
     private void Update()
@@ -247,65 +250,73 @@ public class GameUIController : MonoBehaviour
                 int activeEventId = GameManager.instance.ActiveEventId;
                 wordsPlayerSelected.Add(clickedWord);
                 clickedWordsPerLabel[textLabel].Add(clickedWord);
-                // DatabaseManager.Instance.InsertSelectedWord(activeEventId, (int)textLabel.userData, clickedWord);
+                DatabaseManager.Instance.InsertSelectedWord(activeEventId, (int)textLabel.userData, clickedWord);
             }
             else
             {
                 OnTextUnclicked(clickedWord, textLabel);
             }
             UpdateHighlights(textLabel);
+            LoadSelectedWordsForEvent(GameManager.instance.ActiveEventId);
         }
     }
 
+
     private void OnTextUnclicked(string unclickedWord, Label textLabel)
     {
-        // int postId = (int)textLabel.userData;
+        int postId = (int)textLabel.userData;
         int activeEventId = GameManager.instance.ActiveEventId;
         wordsPlayerSelected.Remove(unclickedWord);
         clickedWordsPerLabel[textLabel].Remove(unclickedWord);
-        // DatabaseManager.Instance.RemoveSelectedWord(activeEventId, postId, unclickedWord);
+        DatabaseManager.Instance.RemoveSelectedWord(activeEventId, postId, unclickedWord);
 
         UpdateHighlights(textLabel);
     }
-    private string GetWordAtPosition(Label textLabel, Vector2 position)
+    private string GetWordAtPosition(Label textLabel, Vector2 clickPosition)
     {
-        // Adjust for any left/top padding in the label.
-        float effectiveX = position.x - textLabel.resolvedStyle.paddingLeft;
-        float effectiveY = position.y - textLabel.resolvedStyle.paddingTop;
+        float effectiveX = clickPosition.x - textLabel.resolvedStyle.paddingLeft;
+        float effectiveY = clickPosition.y - textLabel.resolvedStyle.paddingTop;
 
-        // Use the stored original text (without rich text tags)
-        string fullText = originalTextPerLabel.ContainsKey(textLabel)
-                            ? originalTextPerLabel[textLabel]
-                            : textLabel.text;
-        string[] words = fullText.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        Debug.Log($"ClickPosition: {clickPosition}, EffectiveX: {effectiveX}, EffectiveY: {effectiveY}");
+
+        string text = originalTextPerLabel.ContainsKey(textLabel) ? originalTextPerLabel[textLabel] : textLabel.text;
+        string[] words = Regex.Split(text, @"\s+");
 
         float availableWidth = textLabel.contentRect.width;
-        float lineHeight = textLabel.resolvedStyle.fontSize * 1.2f;
+        float fontSize = textLabel.resolvedStyle.fontSize;
+        float lineHeight = fontSize * 1.2f;
+        Debug.Log($"AvailableWidth: {availableWidth}, FontSize: {fontSize}, Estimated LineHeight: {lineHeight}");
 
-        List<List<string>> lines = new List<List<string>>();
-        List<string> currentLine = new List<string>();
-        float currentLineWidth = 0f;
         float spaceWidth = textLabel.MeasureTextSize(" ", 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x;
-
+        List<(string word, float width)> measuredWords = new List<(string, float)>();
         foreach (string word in words)
         {
-            float wordWidth = textLabel.MeasureTextSize(word, 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x;
+            float w = textLabel.MeasureTextSize(word, 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x;
+            measuredWords.Add((word, w));
+            Debug.Log($"Word: {word}, Width: {w}");
+        }
+
+        List<List<(string word, float width)>> lines = new List<List<(string, float)>>();
+        List<(string word, float width)> currentLine = new List<(string, float)>();
+        float currentLineWidth = 0f;
+        foreach (var mw in measuredWords)
+        {
             if (currentLine.Count == 0)
             {
-                currentLine.Add(word);
-                currentLineWidth = wordWidth;
+                currentLine.Add(mw);
+                currentLineWidth = mw.width;
             }
-            else if (currentLineWidth + spaceWidth + wordWidth <= availableWidth)
+            else if (currentLineWidth + spaceWidth + mw.width <= availableWidth)
             {
-                currentLine.Add(word);
-                currentLineWidth += spaceWidth + wordWidth;
+                currentLine.Add(mw);
+                currentLineWidth += spaceWidth + mw.width;
             }
             else
             {
-                lines.Add(new List<string>(currentLine));
+                lines.Add(new List<(string, float)>(currentLine));
                 currentLine.Clear();
-                currentLine.Add(word);
-                currentLineWidth = wordWidth;
+                currentLine.Add(mw);
+                currentLineWidth = mw.width;
             }
         }
         if (currentLine.Count > 0)
@@ -313,28 +324,53 @@ public class GameUIController : MonoBehaviour
             lines.Add(currentLine);
         }
 
-        int clickedLineIndex = Mathf.FloorToInt(effectiveY / lineHeight);
-        if (clickedLineIndex < 0 || clickedLineIndex >= lines.Count)
+        Debug.Log($"Total Lines: {lines.Count}");
+        for (int i = 0; i < lines.Count; i++)
+        {
+            string lineContent = string.Join(" ", lines[i].Select(item => item.word));
+            Debug.Log($"Line {i}: {lineContent}");
+        }
+
+        int lineIndex = Mathf.FloorToInt(effectiveY / lineHeight);
+        if (lineIndex < 0 || lineIndex >= lines.Count)
         {
             return "";
         }
-        List<string> clickedLineWords = lines[clickedLineIndex];
-
-        // Use a tolerance (in pixels) to help capture very small words.
-        float tolerance = 2f; // adjust this value as needed
+        var clickedLine = lines[lineIndex];
         float accumulatedX = 0f;
-        foreach (string word in clickedLineWords)
-        {
-            float wordWidth = textLabel.MeasureTextSize(word, 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x;
-            if (effectiveX >= (accumulatedX - tolerance) && effectiveX <= (accumulatedX + wordWidth + tolerance))
-            {
-                Debug.Log($"Clicked word: {word} at effective position ({effectiveX}, {effectiveY}) on line {clickedLineIndex}");
-                return word;
-            }
-            accumulatedX += wordWidth + spaceWidth;
-        }
+        float tolerance = 3f; // Increase tolerance if needed
 
+        foreach (var item in clickedLine)
+        {
+            if (effectiveX >= (accumulatedX - tolerance) && effectiveX <= (accumulatedX + item.width + tolerance))
+            {
+                Debug.Log($"Detected word: {item.word} (line {lineIndex}, startX: {accumulatedX}, width: {item.width})");
+                return item.word;
+            }
+            accumulatedX += item.width + spaceWidth;
+        }
         return "";
+    }
+
+
+    private void LoadHighlights(Label textLabel)
+    {
+        int postId = (int)textLabel.userData;
+        List<SelectedWords> selectedWordsList = DatabaseManager.Instance.GetSelectedWordsForPost(postId);
+        if (selectedWordsList.Count > 0 && originalTextPerLabel.ContainsKey(textLabel))
+        {
+            List<string> loadedWords = selectedWordsList.Select(sw => sw.Word).ToList();
+            clickedWordsPerLabel[textLabel] = loadedWords;
+
+            string originalText = originalTextPerLabel[textLabel];
+            string highlightedText = originalText;
+            foreach (SelectedWords sw in selectedWordsList)
+            {
+                string pattern = $@"\b{Regex.Escape(sw.Word)}\b";
+                highlightedText = Regex.Replace(highlightedText, pattern, $"<color=yellow>{sw.Word}</color>");
+            }
+            textLabel.text = highlightedText.Trim();
+        }
     }
 
 
@@ -365,10 +401,8 @@ public class GameUIController : MonoBehaviour
 
     public void LoadFolders()
     {
-        //int activeEventId = GameManager.instance.ActiveEventId;
-        //List<WordFolders> folders = DatabaseManager.Instance.GetFoldersForEvent(activeEventId);
-
         //TODO: GIVE A LOOK AND ADJUST
+        note.RemoveFromClassList("blocked-tab");
         document.rootVisualElement.Q("selectedWordsPanel").style.display = DisplayStyle.None;
         VisualElement folderListPanel = document.rootVisualElement.Q("folderListPanel");
         folderListPanel.style.display = DisplayStyle.Flex;
