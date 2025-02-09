@@ -49,15 +49,6 @@ public class GameManager : MonoBehaviour
             PlayerPrefs.Save();
             StartCoroutine(_eventGenerator.GenerateEvent());
         }
-
-        var currentEvent = DatabaseManager.Instance.GetEvent(_activeEventId);
-        string coreTruth = currentEvent.CoreTruth;
-
-        List<string> formattedTruth = JsonKeyFormatter.GetFormattedKeysFromJson(coreTruth);
-
-        foreach (var s in formattedTruth) {
-            Debug.Log(s);
-        }
     }
 
 }
