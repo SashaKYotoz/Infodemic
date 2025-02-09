@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class GameManager : MonoBehaviour
@@ -16,7 +18,7 @@ public class GameManager : MonoBehaviour
         PlayerPrefs.SetInt("ActiveEventID", _activeEventId);
         PlayerPrefs.Save();
     }
-    
+
     private void Awake()
     {
         _dbManager = gameObject.AddComponent<DatabaseManager>();
@@ -46,6 +48,15 @@ public class GameManager : MonoBehaviour
             PlayerPrefs.SetInt("ActiveEventID", _activeEventId);
             PlayerPrefs.Save();
             StartCoroutine(_eventGenerator.GenerateEvent());
+        }
+
+        var currentEvent = DatabaseManager.Instance.GetEvent(_activeEventId);
+        string coreTruth = currentEvent.CoreTruth;
+
+        List<string> formattedTruth = JsonKeyFormatter.GetFormattedKeysFromJson(coreTruth);
+
+        foreach (var s in formattedTruth) {
+            Debug.Log(s);
         }
     }
 

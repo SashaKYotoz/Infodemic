@@ -10,8 +10,6 @@ using UnityEngine.UIElements;
 
 public class GameUIController : MonoBehaviour
 {
-    private System.Random random = new System.Random();
-    private string[] provacativeWords = { "Wow!", "Impossible!", "Sensation!", "Don't miss" };
     private UIDocument document;
 
     // Panels
@@ -149,6 +147,7 @@ public class GameUIController : MonoBehaviour
     public void StartContent(List<Posts> postsToShow)
     {
         ScrollView newsPanel = document.rootVisualElement.Q<ScrollView>("newsPanel");
+        newsPanel.Clear();
         foreach (Posts post in postsToShow)
         {
             VisualElement fillableNewsHolder = CreateNewsHolder(post);
@@ -419,8 +418,6 @@ public class GameUIController : MonoBehaviour
         return "";
     }
 
-
-
     private void LoadHighlights(Label textLabel)
     {
         int postId = (int)textLabel.userData;
@@ -469,9 +466,10 @@ public class GameUIController : MonoBehaviour
 
     public void LoadFolders()
     {
-        
+
         postWordsPanel.style.display = DisplayStyle.None;
         note.RemoveFromClassList("blocked-tab");
+        post.RemoveFromClassList("blocked-tab");
         document.rootVisualElement.Q("selectedWordsPanel").style.display = DisplayStyle.None;
         document.rootVisualElement.Q("backToFolder").style.display = DisplayStyle.None;
         VisualElement folderListPanel = document.rootVisualElement.Q("folderListPanel");
@@ -491,7 +489,6 @@ public class GameUIController : MonoBehaviour
             holder.Q<Label>("folderName").text = folder.FolderName.Substring(0, 8);
             holder.userData = folder.Id;
 
-            // When clicked, set this folder as active.
             folderButton.RegisterCallback<ClickEvent>(evt => LoadSelectedWordsForEvent(folder.Id));
 
             folderListPanel.Add(holder);
@@ -503,46 +500,106 @@ public class GameUIController : MonoBehaviour
         document.rootVisualElement.Q("folderListPanel").style.display = DisplayStyle.None;
         if (document.rootVisualElement.Q("notePanel").style.display == DisplayStyle.Flex)
         {
-            postWordsPanel.style.display = DisplayStyle.Flex;
-            document.rootVisualElement.Q("backToFolder").style.display = DisplayStyle.Flex;
-            socialMedia.style.display = DisplayStyle.None;
-            webArticle.style.display = DisplayStyle.None;
+            if (document.rootVisualElement.Q("notePanel").style.display == DisplayStyle.Flex)
+            {
+                postWordsPanel.style.display = DisplayStyle.Flex;
+                document.rootVisualElement.Q("backToFolder").style.display = DisplayStyle.Flex;
+                socialMedia.style.display = DisplayStyle.None;
+                webArticle.style.display = DisplayStyle.None;
+            }
+
+            List<SelectedWords> words = DatabaseManager.Instance.GetSelectedWordsForEvent(eventId);
+
+            VisualElement selectedWordsPanel = document.rootVisualElement.Q("selectedWordsPanel");
+            selectedWordsPanel.style.display = DisplayStyle.Flex;
+            selectedWordsPanel.Clear();
+
+            ScrollView wordsHolder = document.rootVisualElement.Q<ScrollView>("wordsHolder");
+
+            foreach (SelectedWords sw in words)
+            {
+                // Check if the word is already in the UI before adding it
+                if (!IsWordInUI(selectedWordsPanel, sw) && !IsWordInUI(wordsHolder.contentContainer, sw))
+                {
+                    Label wordLabel = new Label(sw.Word) { text = sw.Word };
+                    selectedWordsPanel.Add(wordLabel);
+
+                    // Update word position based on approval status
+                    UpdateWordApprovalStatus(wordLabel, sw);
+
+                    wordLabel.RegisterCallback<ClickEvent>(evt =>
+                    {
+                        if (wordLabel.parent == selectedWordsPanel)
+                        {
+                            // Mark the word as approved and move to wordsHolder
+                            sw.IsApproved = true;
+                            DatabaseManager.Instance.UpdateEntity(sw);
+                            UpdateWordApprovalStatus(wordLabel, sw);
+                        }
+                        else if (wordLabel.parent == wordsHolder.contentContainer)
+                        {
+                            // Mark the word as not approved and move to selectedWordsPanel
+                            sw.IsApproved = false;
+                            DatabaseManager.Instance.UpdateEntity(sw);
+                            UpdateWordApprovalStatus(wordLabel, sw);
+                        }
+                    });
+                }
+            }
         }
-
-        List<SelectedWords> words = DatabaseManager.Instance.GetSelectedWordsForEvent(eventId);
-
+    }
+    private bool IsWordInUI(VisualElement parentPanel, SelectedWords sw)
+    {
+        // Check if a word already exists in the panel
+        foreach (var child in parentPanel.Children())
+        {
+            if (child is Label wordLabel && wordLabel.text == sw.Word)
+            {
+                return true; // Word already exists in the UI
+            }
+        }
+        return false; // Word not found
+    }
+    private void UpdateWordApprovalStatus(Label wordLabel, SelectedWords sw)
+    {
         VisualElement selectedWordsPanel = document.rootVisualElement.Q("selectedWordsPanel");
-        selectedWordsPanel.style.display = DisplayStyle.Flex;
-        selectedWordsPanel.Clear();
-
         ScrollView wordsHolder = document.rootVisualElement.Q<ScrollView>("wordsHolder");
 
-        foreach (SelectedWords sw in words)
+        // Check if the word is approved or not
+        if (sw.IsApproved)
         {
-            Label wordLabel = new Label(sw.Word) { text = sw.Word };
-            selectedWordsPanel.Add(wordLabel);
-            wordLabel.RegisterCallback<ClickEvent>(evt =>
+            // If approved, move to wordsHolder
+            if (wordLabel.parent != wordsHolder.contentContainer)
             {
-                if (wordLabel.parent == selectedWordsPanel)
-                {
-                    selectedWordsPanel.Remove(wordLabel);
-                    wordsHolder.contentContainer.Add(wordLabel);
-                }
-                else if (wordLabel.parent == wordsHolder.contentContainer)
-                {
-                    wordsHolder.contentContainer.Remove(wordLabel);
-                    selectedWordsPanel.Add(wordLabel);
-                }
-            });
+                // Remove the word from selectedWordsPanel and add it to wordsHolder
+                selectedWordsPanel.Remove(wordLabel);
+                wordsHolder.contentContainer.Add(wordLabel);
+            }
+        }
+        else
+        {
+            // If not approved, move back to selectedWordsPanel
+            if (wordLabel.parent != selectedWordsPanel)
+            {
+                // Remove the word from wordsHolder and add it back to selectedWordsPanel
+                wordsHolder.contentContainer.Remove(wordLabel);
+                selectedWordsPanel.Add(wordLabel);
+                UpdateTextForPost();
+            }
         }
     }
 
+
+
     private void UpdateTextForPost()
     {
+        int activeEventId = GameManager.instance.ActiveEventId;
+
+        List<SelectedWords> approvedWords = DatabaseManager.Instance.GetSelectedWordsForEvent(activeEventId)
+                                                        .Where(sw => sw.IsApproved)
+                                                        .ToList();
         Label postText = document.rootVisualElement.Q<Label>("postText");
-        postText.text = "";
-        foreach (Label l in document.rootVisualElement.Q<ScrollView>("wordsHolder").Children())
-            postText.text += l.text + "\t";
+        postText.text = string.Join(" ", approvedWords.Select(sw => sw.Word));
     }
     public void HandleArticle(Articles article)
     {

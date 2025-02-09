@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Unity.VisualScripting;
 public class DatabaseManager : MonoBehaviour
 {
     private static DatabaseManager _instance;
@@ -88,6 +89,17 @@ public class DatabaseManager : MonoBehaviour
         return _connection.Find<Organizations>(orgId);
     }
 
+    public List<string> GetFormattedCoreTruth(int eventId)
+    {
+        var currentEvent = GetEvent(eventId);
+        string coreTruth = currentEvent.CoreTruth;
+        return JsonKeyFormatter.GetFormattedKeysFromJson(coreTruth);
+    }
+    public Events GetEvent(int eventId)
+    {
+        return _connection.Find<Events>(eventId);
+    }
+
     public Media GetMedia(int mediaId)
     {
         return _connection.Find<Media>(mediaId);
@@ -146,7 +158,6 @@ public class DatabaseManager : MonoBehaviour
         ).ToList();
     }
 
-
     public List<WordFolders> GetFolders() => _connection.Table<WordFolders>().ToList();
 
     public List<Posts> GetPostsForEvent(int eventId)
@@ -158,18 +169,20 @@ public class DatabaseManager : MonoBehaviour
 
     public List<int> GetParticipatingCharacters(int eventId)
     {
-        return _connection.Query<int>(
-            "SELECT DISTINCT CharacterId FROM Posts WHERE EventId = ? AND CharacterId IS NOT NULL",
-            eventId
-        );
+        return _connection.Table<Posts>()
+                          .Where(p => p.EventId == eventId && p.CharacterId != null)
+                          .Select(p => p.CharacterId.Value)
+                          .Distinct()
+                          .ToList();
     }
 
     public List<int> GetParticipatingOrganizations(int eventId)
     {
-        return _connection.Query<int>(
-            "SELECT DISTINCT OrganizationId FROM Posts WHERE EventId = ? AND OrganizationId IS NOT NULL",
-            eventId
-        );
+        return _connection.Table<Posts>()
+                          .Where(p => p.EventId == eventId && p.OrganizationId != null)
+                          .Select(p => p.OrganizationId.Value)
+                          .Distinct()
+                          .ToList();
     }
 
 
@@ -284,7 +297,6 @@ public class DatabaseManager : MonoBehaviour
                 Title TEXT,
                 Content TEXT,
                 VeracityScore REAL CHECK(VeracityScore BETWEEN 0 AND 10),
-                CreatedAt DATETIME,
                 FOREIGN KEY (MediaId) REFERENCES Media(Id),
                 FOREIGN KEY (EventId) REFERENCES Events(Id)
             );");
@@ -303,6 +315,7 @@ public class DatabaseManager : MonoBehaviour
                 EventId INTEGER NOT NULL,
                 PostId INTEGER NOT NULL,
                 Word TEXT,
+                IsApproved BOOLEAN DEFAULT 0,
                 FOREIGN KEY (EventId) REFERENCES Events(Id),
                 FOREIGN KEY (PostId) REFERENCES Posts(Id)
             )
@@ -420,6 +433,8 @@ public class DatabaseManager : MonoBehaviour
     }
 
 
+
+    public void UpdateEntity<T>(T entity) => _connection.Update(entity);
 
     public void InsertSelectedWord(SelectedWords selectedWord)
     {
@@ -1796,6 +1811,23 @@ public class DatabaseManager : MonoBehaviour
                 @"INSERT INTO EventTypeTags (EventTypeId, TagId) VALUES (?, ?)",
                 eventTypeTag.EventTypeId,
                 eventTypeTag.TagId
+            );
+        }
+
+
+        var defaultMedia = new[] {
+            new { Name = "Player", Description = "Player's media", Readers = 0, Credibility = 1f },
+        };
+
+        foreach (var media in defaultMedia)
+        {
+            _connection.Execute(
+                @"INSERT INTO Media (Name, Description, Readers, Credibility) 
+                VALUES (?, ?, ?, ?)",
+                media.Name,
+                media.Description,
+                media.Readers,
+                Math.Round(media.Credibility, 1)
             );
         }
 

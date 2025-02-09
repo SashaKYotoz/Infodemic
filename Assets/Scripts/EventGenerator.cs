@@ -129,7 +129,7 @@ Validation Rules:
             ""content"": ""{prompt}""
         }}
     ],
-    ""max_tokens"": 3000,
+    ""max_tokens"": 3500,
     ""stream"": false
 }}";
 
@@ -185,11 +185,16 @@ Validation Rules:
 
         GameManager.instance.SetActiveEventId(newEvent.Id);
         // Save posts
-        _postCreator.CreateAndSavePosts(eventJson, newEvent.Id);
-
-
-        CreateNewFolderForEvent(newEvent.Title, newEvent.Description, newEvent.Id);
-        Debug.Log("Event and posts saved successfully!");
+        if (newEvent.Title == null || newEvent.GeneratedContent == null || newEvent.Description == null)
+        {
+            StartCoroutine(GenerateEvent());
+        }
+        else
+        {
+            _postCreator.CreateAndSavePosts(eventJson, newEvent.Id);
+            CreateNewFolderForEvent(newEvent.Title, newEvent.Description, newEvent.Id);
+            Debug.Log("Event and posts saved successfully!");
+        }
     }
     public void CreateNewFolderForEvent(string folderName, string folderDescription, int eventId)
     {
