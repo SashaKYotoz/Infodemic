@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Audio;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
@@ -26,11 +27,13 @@ public class GameUIController : MonoBehaviour
     private Dictionary<Label, string> originalTextPerLabel = new Dictionary<Label, string>();
     private List<string> wordsPlayerSelected = new List<string>();
 
-    private AudioSource audioSource;
+    [SerializeField]
+    private AudioSource buttonClickSource;
+    [SerializeField]
+    private AudioSource unlockTabSource;
 
     private void OnEnable()
     {
-        audioSource = GetComponent<AudioSource>();
         document = GetComponent<UIDocument>();
         var root = document.rootVisualElement;
 
@@ -81,6 +84,7 @@ public class GameUIController : MonoBehaviour
 
         root.Q<Button>("mainExit").RegisterCallback<ClickEvent>(ShowModalWindow);
         root.Q<Button>("postButton").RegisterCallback<ClickEvent>(callback => StartCoroutine(ArticleGenerator.Instance.GenerateArticle()));
+        root.Q<Button>("backToFolder").RegisterCallback<ClickEvent>(callback => LoadFolders());
 
         gameButtons = root.Query<Button>().ToList();
         gameButtons.ForEach(b => b.RegisterCallback<ClickEvent>(PlayClickSound));
@@ -181,25 +185,44 @@ public class GameUIController : MonoBehaviour
 
     private void ChangeDisplayOfPanel(VisualElement element, Posts post)
     {
-        webArticle.style.display = DisplayStyle.None;
-        socialMedia.style.display = DisplayStyle.None;
-        element.style.display = DisplayStyle.Flex;
-        if (element.Equals(webArticle))
-        {
-            Label articleContent = webArticle.Q<Label>("articleContent");
-            Label articleTitle = webArticle.Q<Label>("articleTitle");
+        // webArticle.style.display = DisplayStyle.None;
+        socialMedia.style.display = DisplayStyle.Flex;
+        // element.style.display = DisplayStyle.Flex;
+        // if (element.Equals(webArticle))
+        // {
+        //     Label articleTitle = webArticle.Q<Label>("articleTitle");
+        //     SetLabelText(articleTitle,
+        //     DatabaseManager.Instance.GetOrganizationName(post.OrganizationId.Value)
+        //     + "\n" + DatabaseManager.Instance.GetOrganizations(post.OrganizationId.Value).SocialMediaTag
+        //     + "\n\n" + DatabaseManager.Instance.GetOrganizations(post.OrganizationId.Value).Description,
+        //     post.Id);
 
-            SetLabelText(articleContent, post.Content, post.Id);
-            SetLabelText(articleTitle, DatabaseManager.Instance.GetOrganizationName(post.OrganizationId.Value), post.Id);
-        }
-        else
-        {
-            Label socialMediaContent = socialMedia.Q<Label>("socialMediaContent");
-            Label personInfo = socialMedia.Q<Label>("personInfo");
+        //     Label articleContent = webArticle.Q<Label>("articleContent");
+        //     SetLabelText(articleContent, post.Content, post.Id);
+        // }
+        // else
+        // {
+        Label personInfo = socialMedia.Q<Label>("personInfo");
+        string titleInfo = element.Equals(webArticle) ?
+        DatabaseManager.Instance.GetOrganizationName(post.OrganizationId.Value)
+        + "\n" + DatabaseManager.Instance.GetOrganizations(post.OrganizationId.Value).SocialMediaTag
+        + "\n\n" + DatabaseManager.Instance.GetOrganizations(post.OrganizationId.Value).Description
+        : DatabaseManager.Instance.GetCharacterName(post.CharacterId.Value)
+        + "\n" + DatabaseManager.Instance.GetCharacter(post.CharacterId.Value).SocialMediaTag
+        + "\n\n" + DatabaseManager.Instance.GetCharacter(post.CharacterId.Value).SocialMediaDescription;
+        SetLabelText(
+            personInfo, titleInfo, post.Id);
 
-            SetLabelText(socialMediaContent, post.Content, post.Id);
-            SetLabelText(personInfo, DatabaseManager.Instance.GetCharacterName(post.CharacterId.Value), post.Id);
+        Label postsText = socialMedia.Q<Label>("postsText");
+        postsText.text = "";
+        foreach (Posts p in element.Equals(webArticle)
+        ? DatabaseManager.Instance.GetPostsForOrganization(post.OrganizationId.Value)
+        : DatabaseManager.Instance.GetPostsForCharacter(post.CharacterId.Value))
+        {
+            if (!postsText.text.Contains(p.Content))
+                SetLabelText(postsText, p.Content + "\n\n", p.Id);
         }
+        // }
     }
     private void SetLabelText(Label label, string text, int postId)
     {
@@ -213,15 +236,22 @@ public class GameUIController : MonoBehaviour
         {
             originalTextPerLabel.Add(label, text);
         }
+        RegisterTextLabelCallbacks(document.rootVisualElement);
         LoadHighlights(label);
     }
 
     private void Update()
     {
         if (wordsPlayerSelected.Any() && note.ClassListContains("blocked-tab"))
-            note.RemoveFromClassList("blocked-tab");
+            PlayUnlockEffects(note);
         if (document.rootVisualElement.Q<ScrollView>("wordsHolder").childCount > 0 && post.ClassListContains("blocked-tab"))
-            post.RemoveFromClassList("blocked-tab");
+            PlayUnlockEffects(post);
+    }
+    private void PlayUnlockEffects(VisualElement tab)
+    {
+        if (tab.ClassListContains("blocked-tab"))
+            tab.RemoveFromClassList("blocked-tab");
+        unlockTabSource.Play();
     }
 
     public void ChangeVisibility(string panelName, bool condition, Action? task = null)
@@ -229,7 +259,7 @@ public class GameUIController : MonoBehaviour
         var root = document.rootVisualElement;
         string[] panelNames = { "postPanel", "newsPanel", "resultPanel", "notePanel" };
         if (panelName != "postPanel")
-            postWordsPanel.style.display = DisplayStyle.Flex;
+            postWordsPanel.style.display = DisplayStyle.None;
         if (condition)
         {
             foreach (string panel in panelNames)
@@ -279,19 +309,23 @@ public class GameUIController : MonoBehaviour
         float effectiveX = clickPosition.x - textLabel.resolvedStyle.paddingLeft;
         float effectiveY = clickPosition.y - textLabel.resolvedStyle.paddingTop;
         Debug.Log($"ClickPosition: {clickPosition}, EffectiveX: {effectiveX}, EffectiveY: {effectiveY}");
+
         string text = originalTextPerLabel.ContainsKey(textLabel) ? originalTextPerLabel[textLabel] : textLabel.text;
+
         string[] words = System.Text.RegularExpressions.Regex.Split(text, @"\s+");
 
         float availableWidth = textLabel.contentRect.width
                                - textLabel.resolvedStyle.paddingLeft
                                - textLabel.resolvedStyle.paddingRight;
-        float spaceWidth = textLabel.MeasureTextSize(" ", 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x;
+        float spaceWidth = textLabel.MeasureTextSize(" ", 0, VisualElement.MeasureMode.Undefined,
+                                                       0, VisualElement.MeasureMode.Undefined).x;
         Debug.Log($"AvailableWidth: {availableWidth}, SpaceWidth: {spaceWidth}");
 
         List<(string word, float width)> measuredWords = new List<(string, float)>();
         foreach (string word in words)
         {
-            float w = textLabel.MeasureTextSize(word, 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x;
+            float w = textLabel.MeasureTextSize(word, 0, VisualElement.MeasureMode.Undefined,
+                                                  0, VisualElement.MeasureMode.Undefined).x;
             measuredWords.Add((word, w));
             Debug.Log($"Word: {word}, Width: {w}");
         }
@@ -335,7 +369,8 @@ public class GameUIController : MonoBehaviour
         if (lines.Count > 0)
         {
             string firstLineText = string.Join(" ", lines[0].Select(item => item.word));
-            computedLineHeight = textLabel.MeasureTextSize(firstLineText, 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).y;
+            computedLineHeight = textLabel.MeasureTextSize(firstLineText, 0, VisualElement.MeasureMode.Undefined,
+                                                             0, VisualElement.MeasureMode.Undefined).y;
         }
         Debug.Log($"ComputedLineHeight: {computedLineHeight}");
 
@@ -347,16 +382,38 @@ public class GameUIController : MonoBehaviour
         }
         var clickedLine = lines[lineIndex];
 
-        float tolerance = 3f;
-        float accumulatedX = 0f;
-        foreach (var item in clickedLine)
+        float lineWidth = clickedLine.Sum(item => item.width) + spaceWidth * (clickedLine.Count - 1);
+        float lineOffset = 0f;
+        var align = textLabel.resolvedStyle.unityTextAlign;
+        if (align == TextAnchor.MiddleCenter || align == TextAnchor.UpperCenter || align == TextAnchor.LowerCenter)
         {
-            if (effectiveX >= (accumulatedX - tolerance) && effectiveX <= (accumulatedX + item.width + tolerance))
+            lineOffset = (availableWidth - lineWidth) / 2f;
+        }
+        else if (align == TextAnchor.MiddleRight || align == TextAnchor.UpperRight || align == TextAnchor.LowerRight)
+        {
+            lineOffset = availableWidth - lineWidth;
+        }
+        Debug.Log($"LineOffset: {lineOffset}, LineWidth: {lineWidth}");
+
+        float tolerance = 3.5f;
+        for (int i = 0; i < clickedLine.Count; i++)
+        {
+            string prefix = string.Join(" ", clickedLine.Take(i).Select(item => item.word));
+            if (!string.IsNullOrEmpty(prefix))
+                prefix += " ";
+            float prefixWidth = textLabel.MeasureTextSize(prefix, 0, VisualElement.MeasureMode.Undefined,
+                                                            0, VisualElement.MeasureMode.Undefined).x;
+            float wordStartX = lineOffset + prefixWidth;
+            float wordWidth = textLabel.MeasureTextSize(clickedLine[i].word, 0, VisualElement.MeasureMode.Undefined,
+                                                        0, VisualElement.MeasureMode.Undefined).x;
+            Debug.Log($"Word '{clickedLine[i].word}' starts at {wordStartX} with width {wordWidth}");
+
+            // If the effective click X falls within the bounds (with a small tolerance), return this word.
+            if (effectiveX >= wordStartX - tolerance && effectiveX <= wordStartX + wordWidth + tolerance)
             {
-                Debug.Log($"Detected word: {item.word} (line {lineIndex}, startX: {accumulatedX}, width: {item.width})");
-                return item.word;
+                Debug.Log($"Detected word: {clickedLine[i].word} (line {lineIndex}, startX: {wordStartX}, width: {wordWidth})");
+                return clickedLine[i].word;
             }
-            accumulatedX += item.width + spaceWidth;
         }
 
         return "";
@@ -412,9 +469,11 @@ public class GameUIController : MonoBehaviour
 
     public void LoadFolders()
     {
+        
         postWordsPanel.style.display = DisplayStyle.None;
         note.RemoveFromClassList("blocked-tab");
         document.rootVisualElement.Q("selectedWordsPanel").style.display = DisplayStyle.None;
+        document.rootVisualElement.Q("backToFolder").style.display = DisplayStyle.None;
         VisualElement folderListPanel = document.rootVisualElement.Q("folderListPanel");
         folderListPanel.style.display = DisplayStyle.Flex;
         folderListPanel.Clear();
@@ -442,8 +501,10 @@ public class GameUIController : MonoBehaviour
     private void LoadSelectedWordsForEvent(int eventId)
     {
         document.rootVisualElement.Q("folderListPanel").style.display = DisplayStyle.None;
-        if (document.rootVisualElement.Q("notePanel").style.display == DisplayStyle.Flex){
+        if (document.rootVisualElement.Q("notePanel").style.display == DisplayStyle.Flex)
+        {
             postWordsPanel.style.display = DisplayStyle.Flex;
+            document.rootVisualElement.Q("backToFolder").style.display = DisplayStyle.Flex;
             socialMedia.style.display = DisplayStyle.None;
             webArticle.style.display = DisplayStyle.None;
         }
@@ -479,6 +540,7 @@ public class GameUIController : MonoBehaviour
     private void UpdateTextForPost()
     {
         Label postText = document.rootVisualElement.Q<Label>("postText");
+        postText.text = "";
         foreach (Label l in document.rootVisualElement.Q<ScrollView>("wordsHolder").Children())
             postText.text += l.text + "\t";
     }
@@ -487,11 +549,12 @@ public class GameUIController : MonoBehaviour
         Label postText = document.rootVisualElement.Q<Label>("postText");
         postText.text = article.Content;
         result.RemoveFromClassList("blocked-tab");
+        PlayUnlockEffects(result);
     }
 
     //buttons effects
     private void PlayClickSound(ClickEvent e)
     {
-        audioSource.Play();
+        buttonClickSource.Play();
     }
 }

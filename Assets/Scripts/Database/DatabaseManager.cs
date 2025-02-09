@@ -79,7 +79,14 @@ public class DatabaseManager : MonoBehaviour
 
     public WordFolders GetFolderForEvent(int eventId) => _connection.Find<WordFolders>(eventId);
 
-
+    public Characters GetCharacter(int charId)
+    {
+        return _connection.Find<Characters>(charId);
+    }
+    public Organizations GetOrganizations(int orgId)
+    {
+        return _connection.Find<Organizations>(orgId);
+    }
 
     public Media GetMedia(int mediaId)
     {
