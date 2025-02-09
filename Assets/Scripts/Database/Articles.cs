@@ -9,4 +9,5 @@ public class Articles
     public string Title { get; set; }
     public string Content { get; set; }
     public float VeracityScore { get; set; }
+    public string Verdict { get; set; }
 }

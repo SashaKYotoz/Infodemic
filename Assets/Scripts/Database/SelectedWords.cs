@@ -6,5 +6,6 @@ public class SelectedWords {
     public int EventId { get; set; }
     public int PostId { get; set; }
     public string Word { get; set; }
+    public int PanelIndex { get; set; }
     public bool IsApproved { get; set; }
 }

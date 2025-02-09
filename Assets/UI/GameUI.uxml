@@ -134,12 +134,43 @@
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
-    <ui:VisualElement name="childPostWordsPanel" style="flex-grow: 1; width: 100%; height: 400px; max-height: 700px; min-height: 400px; max-width: 100%; min-width: 100%; border-top-width: 3px; border-right-width: 3px; border-bottom-width: 3px; border-left-width: 3px; border-left-color: rgb(255, 255, 255); border-right-color: rgb(255, 255, 255); border-top-color: rgb(255, 255, 255); border-bottom-color: rgb(255, 255, 255); display: none; margin-bottom: 10px; flex-wrap: wrap; align-items: flex-start; align-self: flex-start;">
-        <ui:VisualElement name="titlePanel" style="flex-grow: 1; width: 100%; max-width: 100%; min-width: 100%; height: 50px; max-height: 50px; min-height: 50px; flex-wrap: wrap; flex-direction: row;">
-            <ui:Label text="Label" name="coreTruthTitle" style="color: rgb(255, 255, 255); font-size: 22px; -unity-font-style: bold; white-space: pre-wrap; height: 100%; width: 100%; max-width: 100%; min-width: 100%; max-height: 100%; min-height: 100%;" />
-        </ui:VisualElement>
-        <ui:VisualElement name="wordsPanel" style="flex-grow: 1; width: 100%; max-width: 100%; min-width: 100%; height: auto; max-height: 600px; min-height: auto; border-top-width: 3px; border-right-width: 0; border-bottom-width: 0; border-left-width: 0; border-left-color: rgb(255, 255, 255); border-right-color: rgb(255, 255, 255); border-top-color: rgb(255, 255, 255); border-bottom-color: rgb(255, 255, 255); flex-wrap: wrap; flex-direction: row; align-items: flex-start; align-self: auto; align-content: flex-start; justify-content: flex-start;">
-            <ui:Label text="Label" name="coreTruthWords" style="color: rgb(255, 255, 255); font-size: 16px; white-space: pre-wrap; width: 100%; max-width: 100%; min-width: 100%; min-height: 100%; max-height: 100%; height: 100%; display: none; flex-wrap: wrap;" />
-        </ui:VisualElement>
+    <ui:VisualElement name="childPostWordsPanel"
+    style="flex-grow: 1;
+           width: 100%;
+           height: 400px;
+           max-height: 700px;
+           min-height: 400px;
+           border-width: 3px;
+           border-color: rgb(255, 255, 255);
+           margin-bottom: 10px;
+           display: none;
+           /* Set the panel to arrange its children vertically */
+           flex-direction: column;">
+    <ui:VisualElement name="titlePanel"
+        style="width: 100%;
+               height: 50px;
+               flex-direction: row;
+               align-items: center;">
+        <ui:Label text="Label" name="coreTruthTitle"
+            style="color: rgb(255, 255, 255);
+                   font-size: 22px;
+                   font-style: bold;
+                   white-space: pre-wrap;
+                   width: 100%;
+                   height: 100%;" />
     </ui:VisualElement>
+    <ui:VisualElement name="wordsPanel"
+        style="width: 100%;
+               height: auto;
+               max-height: 600px;
+               border-top-width: 3px;
+               border-top-color: rgb(255, 255, 255);
+               /* Arrange word labels in a row that wraps */
+               flex-direction: row;
+               flex-wrap: wrap;
+               align-items: flex-start;
+               justify-content: flex-start;">
+    </ui:VisualElement>
+    
+</ui:VisualElement>
 </ui:UXML>

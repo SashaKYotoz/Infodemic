@@ -297,6 +297,7 @@ public class DatabaseManager : MonoBehaviour
                 Title TEXT,
                 Content TEXT,
                 VeracityScore REAL CHECK(VeracityScore BETWEEN 0 AND 10),
+                Verdict TEXT,
                 FOREIGN KEY (MediaId) REFERENCES Media(Id),
                 FOREIGN KEY (EventId) REFERENCES Events(Id)
             );");
@@ -315,9 +316,18 @@ public class DatabaseManager : MonoBehaviour
                 EventId INTEGER NOT NULL,
                 PostId INTEGER NOT NULL,
                 Word TEXT,
+                PanelIndex INT DEFAULT -1,
                 IsApproved BOOLEAN DEFAULT 0,
                 FOREIGN KEY (EventId) REFERENCES Events(Id),
                 FOREIGN KEY (PostId) REFERENCES Posts(Id)
+            )
+        ");
+        _connection.Execute(@"
+            CREATE TABLE IF NOT EXISTS WordPanels(
+                Id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                Name TEXT,
+                EventId INT,
+                FOREIGN KEY (EventId) REFERENCES Events(Id)
             )
         ");
 
@@ -434,11 +444,19 @@ public class DatabaseManager : MonoBehaviour
 
 
 
+    public List<Articles> GetArticlesByEventId(int eventId) => _connection.Query<Articles>("SELECT * From Articles WHERE EventId = ?", eventId).ToList();
     public void UpdateEntity<T>(T entity) => _connection.Update(entity);
 
     public void InsertSelectedWord(SelectedWords selectedWord)
     {
         _connection.Insert(selectedWord);
+    }
+
+    public void InsertEntity<T>(T entity) => _connection.Insert(entity);
+
+    public List<WordPanels> GetWordPanelsForEvent(int eventId)
+    {
+        return _connection.Query<WordPanels>("SELECT * FROM WordPanels WHERE EventId = ?", eventId).ToList();
     }
 
     private void InsertDefaultValues()

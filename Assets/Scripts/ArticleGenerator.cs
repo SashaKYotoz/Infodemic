@@ -58,6 +58,7 @@ public class ArticleGenerator : MonoBehaviour
         string postsText = string.Join("\n", eventPosts.Select(p =>
      $"[{(p.CharacterId != null ? "Character:" + p.CharacterId : "Organization:" + p.OrganizationId)}] {p.Content}"));
 
+        // Fetch characters and organizations
         List<int> characterIds = eventPosts.Where(p => p.CharacterId != null).Select(p => p.CharacterId.Value).Distinct().ToList();
         List<int> organizationIds = eventPosts.Where(p => p.OrganizationId != null).Select(p => p.OrganizationId.Value).Distinct().ToList();
 
@@ -67,14 +68,53 @@ public class ArticleGenerator : MonoBehaviour
         string charactersInfo = string.Join("\n", characters.Select(c => $"{c.Name} ({c.Profession}) - Biases: {DatabaseManager.Instance.GetCharacterBiases(c.Id)}"));
         string organizationsInfo = string.Join("\n", organizations.Select(o => $"{o.Name} (Type: {DatabaseManager.Instance.GetOrganizationType(o.TypeId)}) - Credibility: {o.Credibility}"));
 
+        // Updated prompt
         string prompt = $@"
-You are a professional journalist tasked with writing a high-quality news article for a reputable media outlet. Your output must be strictly valid JSON with no extraneous text. Follow the instructions exactly.
+Notes on Word Panels:
+The player's selected words are organized according to predefined word panels for the event. The mapping of word panels to fact keys is as follows:
+   - Time To Market
+   - Distance Traveled
+   - Team Size
+The selected words are formatted as lines where each line contains a panel name followed by a colon and the player's selected value. For example:
+   Time To Market: 200
+   Team Size: 150 members
+   Distance Traveled: [value, if provided]
+These values should be used to replace the corresponding fact keys in the Core Truth.
 
-The article must be based solely on the data provided below. Use this data to construct a coherent, engaging, and fact-based article. Importantly, you must use the player's selected key phrases exactly as given—even if they include irrelevant or incorrect information. You must compare the player's input against the provided Core Truth. If significant parts of the Core Truth are missing from the player's input, or if many of the selected phrases are irrelevant, contradictory, or nonsensical compared to the Core Truth, you must lower the overall veracity score accordingly. For example, if more than half of the player's selected phrases are unsupported or misleading, the veracity score should be low (closer to 1).
+You are a news generator for a media literacy game. The event details above include a Core Truth in JSON format with several fact keys (for example, ""teamSize"", ""size"", ""timeToMarket"", etc.). The player has provided their selected words for each fact key using the word panels format described above. Note that the player's selections might be formatted differently or be less detailed than the original data. For instance:
+   - If the Core Truth contains:
+         ""teamSize"": ""150 members""
+     and the player submits:
+         Team Size: 150 members
+     this should be considered a perfect match.
+   - Similarly, if the Core Truth has:
+         ""size"": ""10 m^2""
+     and the player chooses:
+         Size: small
+     this is acceptable unless the original posts indicate that more precise details were available.
 
-Below is the data:
+Specific Points and Validation Rules:
+1. Article Generation:
+   - Generate a realistic news article written in a neutral, third-person media tone, as if produced by a professional news outlet.
+   - The article must integrate the player's selected words (provided in the word panels format) in place of the original truth data for each corresponding fact key.
+   - The article may include quotes or references from characters or organizations to support the narrative.
+   - The narrative should be realistic and resemble actual media reporting, avoiding first-person narration.
 
------------------------------
+2. Data Replacement and Validation:
+   - Replace each fact's original truth data with the player's selected words, even if the details differ.
+   - Evaluate each fact by comparing the player's selections with the original Core Truth:
+       a. If the selected words capture the intended meaning (e.g., numeric values or qualitative descriptions), consider it a perfect match.
+       b. If a fact key is not mentioned in the original posts, do not penalize the player's score for that fact.
+       c. If the player's selection is less precise but still conveys the correct sense, assign a high veracity rating.
+       d. If the selection is completely off or missing, reduce the veracity rating accordingly.
+
+3. Veracity Scoring and Verdict:
+   - Assign a veracity score on a scale from 1 to 10:
+         1 indicates very poor accuracy (completely random or missing relevant information).
+         10 indicates near-perfect accuracy.
+   - Provide a concise, supportive verdict that explains the player's performance in clear, non-technical language using friendly and encouraging terms. When referring to fact keys, use user-friendly names (e.g., ""Time To Market"" instead of ""timeToMarket"").
+
+4. Input Data
 Event:
 {activeEvent.Title}
 
@@ -90,55 +130,39 @@ Participating Organizations:
 Original Posts:
 {postsText}
 
-Player's Selected Key Phrases (comma-separated):
-""{selectedWordsText}""
------------------------------
-
-Analysis Instructions:
-1. Compare each selected key phrase with the Core Truth and Original Posts.
-2. If many of the player's key phrases do not appear in or contradict the Core Truth, or if there are extra phrases that are irrelevant or misleading, lower the veracity score significantly. (For instance, if over 50% of the phrases are off, the score should be below 5; if none of the key phrases match the Core Truth, the score should be 1.)
-3. Provide a single overall veracity score (a float from 1 to 10) based solely on the reliability and consistency of the selected key phrases with the provided data.
-
-Article Requirements:
-- Use ALL the selected key phrases exactly as provided, even if they include errors.
-- Reference relevant details from the Original Posts, Participating Characters, and Participating Organizations.
-- Follow a clear journalistic structure: Headline, Introduction, Main Body, and Conclusion.
-- Do not add any extra facts or data beyond what is provided.
-- Ensure the tone and style are serious, factual, and written in the first person.
-- The article should be rich in detail (at least 2-3 sentences per section) and include subtle clues that both reinforce the Core Truth and expose any discrepancies in the player's input.
+Player's Selected Words for Core Truth:
+{selectedWordsText}
 
 Output Requirements:
-Output your response strictly in the following JSON structure with no extra commentary:
+Your final response must be strictly in JSON format containing only the following keys:
+- ""title"": The title of the generated article.
+- ""content"": The full article content, written in a realistic news reporting style in the third person and incorporating the player's selected words.
+- ""veracityScore"": A number between 1 and 10 representing the accuracy of the player's selections.
+- ""verdict"": A concise, supportive explanation of the player's performance.
 
-{{
-    ""title"": ""Generated article title"",
-    ""description"": ""A neutral one-sentence summary of the event without analysis."",
-    ""veracityScore"": ""(a float from 1 to 10 indicating reliability, adjusted based on the player's input vs. the Core Truth)""
-}}
-
-Important:
-- Output valid JSON only.
-- Do not include any markdown formatting or extra text.
+Do not include any additional text or formatting outside of valid JSON.
 ";
 
-prompt = EscapeJsonString(prompt);
-Debug.Log(prompt);
 
 
-        // Build the request body
+
+
+        prompt = EscapeJsonString(prompt);
+        Debug.Log(prompt);
+
+        // Build and send request (unchanged)
         string requestBody = $@"
-{{
-    ""messages"": [
-        {{
-            ""role"": ""user"",
-            ""content"": ""{prompt}""
-        }}
-    ],
-    ""max_tokens"": 2048,
-    ""stream"": false
-}}";
+    {{
+        ""messages"": [
+            {{
+                ""role"": ""user"",
+                ""content"": ""{prompt}""
+            }}
+        ],
+        ""max_tokens"": 3000,
+        ""stream"": false
+    }}";
 
-        // Send the request
         UnityWebRequest request = new UnityWebRequest(apiUrl, "POST")
         {
             uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(requestBody)),
@@ -165,13 +189,15 @@ Debug.Log(prompt);
                 EventId = GameManager.instance.ActiveEventId,
                 Title = articleJson["title"],
                 Content = articleJson["content"],
-                VeracityScore = articleJson["veracityScore"]
+                VeracityScore = articleJson["veracityScore"],
+                Verdict = articleJson["verdict"]
             };
             Debug.Log("TITLE: " + newArticle.Title);
             Debug.Log("CONTENT" + newArticle.Content);
+            Debug.Log("VERDICT: " + newArticle.Verdict);
             DatabaseManager.Instance.SaveArticle(newArticle);
-            ChangeReputationLevel(newArticle);
             gameUIController.HandleArticle(newArticle);
+            ChangeReputationLevel(newArticle);
         }
         else
         {
@@ -185,7 +211,7 @@ Debug.Log(prompt);
         var media = DatabaseManager.Instance.GetMedia(article.MediaId);
 
         float baseline = 5f;
-        float factor = 0.1f; // This factor determines how much the veracity score shifts credibility.
+        float factor = 0.3f; // This factor determines how much the veracity score shifts credibility.
         float deltaCredibility = (article.VeracityScore - baseline) * factor;
 
         media.Credibility = Mathf.Clamp(media.Credibility + deltaCredibility, 1f, 10f);

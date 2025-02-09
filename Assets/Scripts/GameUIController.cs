@@ -256,7 +256,7 @@ public class GameUIController : MonoBehaviour
         unlockTabSource.Play();
     }
 
-    public void ChangeVisibility(string panelName, bool condition, Action? task = null)
+    public void ChangeVisibility(string panelName, bool condition, Action task = null)
     {
         var root = document.rootVisualElement;
         string[] panelNames = { "postPanel", "newsPanel", "resultPanel", "notePanel" };
@@ -314,26 +314,30 @@ public class GameUIController : MonoBehaviour
 
         string text = originalTextPerLabel.ContainsKey(textLabel) ? originalTextPerLabel[textLabel] : textLabel.text;
 
+        // Split text into words (keeping punctuation at end of words)
         string[] words = System.Text.RegularExpressions.Regex.Split(text, @"\s+");
 
         float availableWidth = textLabel.contentRect.width
                                - textLabel.resolvedStyle.paddingLeft
                                - textLabel.resolvedStyle.paddingRight;
         float spaceWidth = textLabel.MeasureTextSize(" ", 0, VisualElement.MeasureMode.Undefined,
-                                                       0, VisualElement.MeasureMode.Undefined).x;
+                                                     0, VisualElement.MeasureMode.Undefined).x;
         Debug.Log($"AvailableWidth: {availableWidth}, SpaceWidth: {spaceWidth}");
 
-        List<(string word, float width)> measuredWords = new List<(string, float)>();
+        // Measure words while ignoring trailing punctuation
+        List<(string word, float width, string rawWord)> measuredWords = new List<(string, float, string)>();
         foreach (string word in words)
         {
-            float w = textLabel.MeasureTextSize(word, 0, VisualElement.MeasureMode.Undefined,
-                                                  0, VisualElement.MeasureMode.Undefined).x;
-            measuredWords.Add((word, w));
-            Debug.Log($"Word: {word}, Width: {w}");
+            string cleanedWord = word.TrimEnd('.', ',', '!', '?', ';', ':'); // Remove punctuation for measurement
+            float w = textLabel.MeasureTextSize(cleanedWord, 0, VisualElement.MeasureMode.Undefined,
+                                                0, VisualElement.MeasureMode.Undefined).x;
+            measuredWords.Add((cleanedWord, w, word)); // Store both cleaned and raw word
+            Debug.Log($"Word: {word}, Cleaned: {cleanedWord}, Width: {w}");
         }
 
-        List<List<(string word, float width)>> lines = new List<List<(string, float)>>();
-        List<(string word, float width)> currentLine = new List<(string, float)>();
+        // Arrange words into lines based on available width
+        List<List<(string word, float width, string rawWord)>> lines = new List<List<(string, float, string)>>();
+        List<(string word, float width, string rawWord)> currentLine = new List<(string, float, string)>();
         float currentLineWidth = 0f;
         foreach (var mw in measuredWords)
         {
@@ -349,7 +353,7 @@ public class GameUIController : MonoBehaviour
             }
             else
             {
-                lines.Add(new List<(string, float)>(currentLine));
+                lines.Add(new List<(string, float, string)>(currentLine));
                 currentLine.Clear();
                 currentLine.Add(mw);
                 currentLineWidth = mw.width;
@@ -367,15 +371,17 @@ public class GameUIController : MonoBehaviour
             Debug.Log($"Line {i}: {lineContent}");
         }
 
+        // Compute line height dynamically
         float computedLineHeight = textLabel.resolvedStyle.fontSize * 1.2f;
         if (lines.Count > 0)
         {
             string firstLineText = string.Join(" ", lines[0].Select(item => item.word));
             computedLineHeight = textLabel.MeasureTextSize(firstLineText, 0, VisualElement.MeasureMode.Undefined,
-                                                             0, VisualElement.MeasureMode.Undefined).y;
+                                                           0, VisualElement.MeasureMode.Undefined).y;
         }
         Debug.Log($"ComputedLineHeight: {computedLineHeight}");
 
+        // Determine which line the user clicked on
         int lineIndex = Mathf.FloorToInt(effectiveY / computedLineHeight);
         if (lineIndex < 0 || lineIndex >= lines.Count)
         {
@@ -384,6 +390,7 @@ public class GameUIController : MonoBehaviour
         }
         var clickedLine = lines[lineIndex];
 
+        // Handle text alignment for better accuracy
         float lineWidth = clickedLine.Sum(item => item.width) + spaceWidth * (clickedLine.Count - 1);
         float lineOffset = 0f;
         var align = textLabel.resolvedStyle.unityTextAlign;
@@ -397,29 +404,36 @@ public class GameUIController : MonoBehaviour
         }
         Debug.Log($"LineOffset: {lineOffset}, LineWidth: {lineWidth}");
 
-        float tolerance = 3.5f;
         for (int i = 0; i < clickedLine.Count; i++)
         {
             string prefix = string.Join(" ", clickedLine.Take(i).Select(item => item.word));
             if (!string.IsNullOrEmpty(prefix))
                 prefix += " ";
             float prefixWidth = textLabel.MeasureTextSize(prefix, 0, VisualElement.MeasureMode.Undefined,
-                                                            0, VisualElement.MeasureMode.Undefined).x;
+                                                          0, VisualElement.MeasureMode.Undefined).x;
             float wordStartX = lineOffset + prefixWidth;
             float wordWidth = textLabel.MeasureTextSize(clickedLine[i].word, 0, VisualElement.MeasureMode.Undefined,
                                                         0, VisualElement.MeasureMode.Undefined).x;
-            Debug.Log($"Word '{clickedLine[i].word}' starts at {wordStartX} with width {wordWidth}");
 
-            // If the effective click X falls within the bounds (with a small tolerance), return this word.
-            if (effectiveX >= wordStartX - tolerance && effectiveX <= wordStartX + wordWidth + tolerance)
+            // Ensure last word is clickable
+            if (i == clickedLine.Count - 1)
             {
-                Debug.Log($"Detected word: {clickedLine[i].word} (line {lineIndex}, startX: {wordStartX}, width: {wordWidth})");
-                return clickedLine[i].word;
+                wordWidth += spaceWidth; // Add tolerance for punctuation spacing
+            }
+
+            Debug.Log($"Word '{clickedLine[i].rawWord}' starts at {wordStartX} with width {wordWidth}");
+
+            if (effectiveX >= wordStartX && effectiveX <= wordStartX + wordWidth)
+            {
+                Debug.Log($"Detected word: {clickedLine[i].rawWord} (line {lineIndex}, startX: {wordStartX}, width: {wordWidth})");
+                return clickedLine[i].rawWord; // Return original word with punctuation
             }
         }
 
         return "";
     }
+
+
 
     private void LoadHighlights(Label textLabel)
     {
@@ -499,16 +513,19 @@ public class GameUIController : MonoBehaviour
 
     private void LoadSelectedWordsForEvent(int eventId)
     {
+        // Hide the folders list panel and clear previous selections.
         document.rootVisualElement.Q("folderListPanel").style.display = DisplayStyle.None;
         if (document.rootVisualElement.Q("notePanel").style.display == DisplayStyle.Flex)
         {
+            // Reset any previously selected dynamic panel
+            currentChosenPanel = null;
+
             postWordsPanel.style.display = DisplayStyle.Flex;
             document.rootVisualElement.Q("backToFolder").style.display = DisplayStyle.Flex;
             socialMedia.style.display = DisplayStyle.None;
             webArticle.style.display = DisplayStyle.None;
 
             List<SelectedWords> words = DatabaseManager.Instance.GetSelectedWordsForEvent(eventId);
-
             VisualElement selectedWordsPanel = document.rootVisualElement.Q("selectedWordsPanel");
             selectedWordsPanel.style.display = DisplayStyle.Flex;
             selectedWordsPanel.Clear();
@@ -516,12 +533,26 @@ public class GameUIController : MonoBehaviour
             ScrollView wordsHolder = document.rootVisualElement.Q<ScrollView>("wordsHolder");
             wordsHolder.Clear();
 
-            foreach (string s in DatabaseManager.Instance.GetFormattedCoreTruth(eventId))
+            // Load (or create) the dynamic panels for this event.
+            List<WordPanels> wordPanels = DatabaseManager.Instance.GetWordPanelsForEvent(eventId);
+            if (wordPanels.Count == 0)
+            {
+                foreach (string key in DatabaseManager.Instance.GetFormattedCoreTruth(eventId))
+                {
+                    WordPanels newPanel = new WordPanels() { Name = key, EventId = eventId };
+                    DatabaseManager.Instance.InsertEntity(newPanel);
+                    wordPanels.Add(newPanel);
+                }
+            }
+
+            // Instantiate the UI panels from the saved WordPanels.
+            foreach (WordPanels panelRecord in wordPanels)
             {
                 VisualElement panel = originalAsset.Instantiate().Q("childPostWordsPanel");
                 panel.style.display = DisplayStyle.Flex;
+                panel.userData = panelRecord.Id; // save the panel id
                 Label coreTruthTitle = panel.Q<Label>("coreTruthTitle");
-                coreTruthTitle.text = s + ":";
+                coreTruthTitle.text = panelRecord.Name + ":";
                 VisualElement coreTruthWordsContainer = panel.Q<VisualElement>("wordsPanel");
                 coreTruthWordsContainer.Clear();
                 panel.RegisterCallback<ClickEvent>(evt =>
@@ -532,37 +563,52 @@ public class GameUIController : MonoBehaviour
                 wordsHolder.Add(panel);
             }
 
+            // For each saved word, always create a label (since the containers were cleared)
             foreach (SelectedWords sw in words)
             {
-                if (!IsWordInUI(selectedWordsPanel, sw) && !IsWordInUI(currentChosenPanel, sw))
+                Label wordLabel = new Label(sw.Word) { text = sw.Word };
+
+                // Place the label into its saved dynamic panel (if PanelIndex != -1)
+                if (sw.PanelIndex != -1)
                 {
-                    Label wordLabel = new Label(sw.Word) { text = sw.Word };
-                    selectedWordsPanel.Add(wordLabel);
-
-                    UpdateWordApprovalStatus(wordLabel, sw);
-
-                    wordLabel.RegisterCallback<ClickEvent>(evt =>
+                    VisualElement targetPanel = null;
+                    foreach (VisualElement panel in wordsHolder.Children())
                     {
-                        if (currentChosenPanel != null)
+                        if (panel.userData != null && (int)panel.userData == sw.PanelIndex)
                         {
-                            if (wordLabel.parent == selectedWordsPanel)
-                            {
-                                sw.IsApproved = true;
-                                DatabaseManager.Instance.UpdateEntity(sw);
-                                UpdateWordApprovalStatus(wordLabel, sw);
-                            }
-                            else if (wordLabel.parent == currentChosenPanel)
-                            {
-                                sw.IsApproved = false;
-                                DatabaseManager.Instance.UpdateEntity(sw);
-                                UpdateWordApprovalStatus(wordLabel, sw);
-                            }
+                            targetPanel = panel;
+                            break;
                         }
-                    });
+                    }
+                    if (targetPanel != null)
+                        targetPanel.contentContainer.Add(wordLabel);
+                    else
+                        selectedWordsPanel.Add(wordLabel);
                 }
+                else
+                {
+                    selectedWordsPanel.Add(wordLabel);
+                }
+
+                // Attach a click event so the user can toggle the label’s container.
+                wordLabel.RegisterCallback<ClickEvent>(evt =>
+                {
+                    if (currentChosenPanel != null)
+                    {
+                        // Toggle approval based on which container the label is in.
+                        if (wordLabel.parent == selectedWordsPanel)
+                            sw.IsApproved = true;
+                        else if (wordLabel.parent == currentChosenPanel)
+                            sw.IsApproved = false;
+                        DatabaseManager.Instance.UpdateEntity(sw);
+                        UpdateWordApprovalStatus(wordLabel, sw);
+                    }
+                });
             }
         }
     }
+
+
     private bool IsWordInUI(VisualElement parentPanel, SelectedWords sw)
     {
         if (parentPanel == null)
@@ -579,46 +625,80 @@ public class GameUIController : MonoBehaviour
     private void UpdateWordApprovalStatus(Label wordLabel, SelectedWords sw)
     {
         VisualElement selectedWordsPanel = document.rootVisualElement.Q("selectedWordsPanel");
-        if (currentChosenPanel != null)
+
+        // Only update if a dynamic panel is actively selected (i.e. via user interaction)
+        if (currentChosenPanel == null)
+            return;
+
+        if (sw.IsApproved)
         {
-            buttonClickSource.Play();
-            if (sw.IsApproved)
+            int currentWordCount = currentChosenPanel.contentContainer.Children().Count();
+            if (currentWordCount < 10)
             {
+                buttonClickSource.Play();
                 if (wordLabel.parent != currentChosenPanel)
                 {
-                    selectedWordsPanel.Remove(wordLabel);
+                    wordLabel.RemoveFromHierarchy();
                     currentChosenPanel.contentContainer.Add(wordLabel);
                 }
+                // Update PanelIndex only when the user moves the word
+                if (currentChosenPanel.userData != null)
+                    sw.PanelIndex = (int)currentChosenPanel.userData;
             }
             else
             {
-                if (wordLabel.parent != selectedWordsPanel)
-                {
-                    currentChosenPanel.Remove(wordLabel);
-                    selectedWordsPanel.Add(wordLabel);
-                    UpdateTextForPost();
-                }
+                Debug.Log("Cannot add more words - limit reached");
+                sw.IsApproved = false;
             }
         }
+        else
+        {
+            buttonClickSource.Play();
+            if (wordLabel.parent != selectedWordsPanel)
+            {
+                wordLabel.RemoveFromHierarchy();
+                selectedWordsPanel.Add(wordLabel);
+                UpdateTextForPost();
+            }
+            sw.PanelIndex = -1;
+        }
+        DatabaseManager.Instance.UpdateEntity(sw);
     }
+
 
     private void UpdateTextForPost()
     {
         int activeEventId = GameManager.instance.ActiveEventId;
-
         List<SelectedWords> approvedWords = DatabaseManager.Instance.GetSelectedWordsForEvent(activeEventId)
-                                                        .Where(sw => sw.IsApproved)
-                                                        .ToList();
+            .Where(sw => sw.IsApproved)
+            .ToList();
+
+        // Get the list of word folders for this event
+        List<WordPanels> wordPanels = DatabaseManager.Instance.GetWordPanelsForEvent(activeEventId);
+
         Label postText = document.rootVisualElement.Q<Label>("postText");
-        postText.text = string.Join(" ", approvedWords.Select(sw => sw.Word));
+
+        // Group words by their PanelIndex (which represents the folder)
+        var groupedWords = approvedWords
+            .GroupBy(sw => sw.PanelIndex)
+            .ToList();
+
+        List<string> formattedText = new List<string>();
+
+        foreach (var group in groupedWords)
+        {
+            // Find the matching folder name
+            string folderName = wordPanels.FirstOrDefault(wp => wp.Id == group.Key)?.Name ?? "Unknown Folder";
+
+            // Format the section as: "FolderName: word1 word2 word3"
+            formattedText.Add($"{folderName}: {string.Join(" ", group.Select(sw => sw.Word))}");
+        }
+
+        // Set the formatted text in the UI label
+        postText.text = string.Join("\n", formattedText);
     }
-    private void UpdateWidgetsInfo()
-    {
-        Label popularityLabel = document.rootVisualElement.Q<Label>("popularityLabel");
-        popularityLabel.text = "" + DatabaseManager.Instance.GetMedia(1).Readers;
-        Label trustLabel = document.rootVisualElement.Q<Label>("trustLabel");
-        trustLabel.text = DatabaseManager.Instance.GetMedia(1).Credibility + "/10";
-    }
+
+
     public void HandleArticle(Articles article)
     {
         Label postText = document.rootVisualElement.Q<Label>("postText");
@@ -642,7 +722,8 @@ public class GameUIController : MonoBehaviour
         StartCoroutine(AnimateLabel(resultPopularityLabel, targetPopularity));
 
         Label noteByAI = document.rootVisualElement.Q<Label>("noteByAI");
-        // noteByAI.text += ;
+        var lastArticle =  DatabaseManager.Instance.GetArticlesByEventId(GameManager.instance.ActiveEventId)[0];
+        noteByAI.text += lastArticle.Verdict;
     }
 
     private IEnumerator AnimateLabel(Label label, float targetValue, string suffix = "")
@@ -660,6 +741,14 @@ public class GameUIController : MonoBehaviour
 
             yield return new WaitForSeconds(0.25f);
         }
+    }
+
+    private void UpdateWidgetsInfo()
+    {
+        Label popularityLabel = document.rootVisualElement.Q<Label>("popularityLabel");
+        popularityLabel.text = "" + DatabaseManager.Instance.GetMedia(1).Readers;
+        Label trustLabel = document.rootVisualElement.Q<Label>("trustLabel");
+        trustLabel.text = DatabaseManager.Instance.GetMedia(1).Credibility + "/10";
     }
 
     //buttons effects
