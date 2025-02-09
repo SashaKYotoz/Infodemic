@@ -583,7 +583,7 @@ TextureImporter:
         width: 26
         height: 24
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -605,7 +605,7 @@ TextureImporter:
         width: 22
         height: 26
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -627,7 +627,7 @@ TextureImporter:
         width: 31
         height: 28
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -649,7 +649,7 @@ TextureImporter:
         width: 32
         height: 31
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -671,7 +671,7 @@ TextureImporter:
         width: 32
         height: 29
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -693,7 +693,7 @@ TextureImporter:
         width: 22
         height: 31
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -702,6 +702,72 @@ TextureImporter:
       bones: []
       spriteID: 8a39415d0586a1547a6484d80b969540
       internalID: 2006537187
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popularity
+      rect:
+        serializedVersion: 2
+        x: 993
+        y: 44
+        width: 31
+        height: 25
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: cdc687bcde846574e964e4e3431ac23a
+      internalID: 956539907
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: trust
+      rect:
+        serializedVersion: 2
+        x: 1042
+        y: 44
+        width: 20
+        height: 26
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: b441d8db6843ce54fbe1eb6fd75d9b08
+      internalID: 2092756479
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: personIcon
+      rect:
+        serializedVersion: 2
+        x: 736
+        y: 126
+        width: 64
+        height: 64
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 6d84412518585034889a796f6319209e
+      internalID: -572671319
       vertices: []
       indices: 
       edges: []
@@ -730,7 +796,9 @@ TextureImporter:
       news_tab: 1688690590
       note_tab: -1098380140
       panel_bg: 193555676
+      personIcon: -572671319
       picture_bg: -958558946
+      popularity: 956539907
       post_tab: 198710308
       reposts: 295498329
       result_tab: -1588996897
@@ -746,6 +814,7 @@ TextureImporter:
       spriteset_5: 145214154
       spriteset_7: 9913142
       spriteset_8: -1138864279
+      trust: 2092756479
       upload: 1286012913
       views: -1200733582
       webTab: -1996489177

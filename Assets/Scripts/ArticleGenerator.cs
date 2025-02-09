@@ -170,8 +170,8 @@ Debug.Log(prompt);
             Debug.Log("TITLE: " + newArticle.Title);
             Debug.Log("CONTENT" + newArticle.Content);
             DatabaseManager.Instance.SaveArticle(newArticle);
-            gameUIController.HandleArticle(newArticle);
             ChangeReputationLevel(newArticle);
+            gameUIController.HandleArticle(newArticle);
         }
         else
         {

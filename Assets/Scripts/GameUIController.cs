@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -73,6 +74,7 @@ public class GameUIController : MonoBehaviour
 
             LoadFolders();
         }
+        UpdateWidgetsInfo();
     }
 
     private void RegisterCallbacks(VisualElement root)
@@ -80,7 +82,7 @@ public class GameUIController : MonoBehaviour
         note.RegisterCallback<ClickEvent>(callback => ChangeVisibility("notePanel", !note.ClassListContains("blocked-tab"), LoadFolders));
         news.RegisterCallback<ClickEvent>(callback => ChangeVisibility("newsPanel", true));
         post.RegisterCallback<ClickEvent>(callback => ChangeVisibility("postPanel", !post.ClassListContains("blocked-tab"), UpdateTextForPost));
-        result.RegisterCallback<ClickEvent>(callback => ChangeVisibility("resultPanel", !result.ClassListContains("blocked-tab")));
+        result.RegisterCallback<ClickEvent>(callback => ChangeVisibility("resultPanel", !result.ClassListContains("blocked-tab"), UpdateResultPanel));
 
         root.Q<Button>("mainExit").RegisterCallback<ClickEvent>(ShowModalWindow);
         root.Q<Button>("postButton").RegisterCallback<ClickEvent>(callback => StartCoroutine(ArticleGenerator.Instance.GenerateArticle()));
@@ -142,8 +144,8 @@ public class GameUIController : MonoBehaviour
         gameButtons.ForEach(b => b.UnregisterCallback<ClickEvent>(PlayClickSound));
         note.RegisterCallback<ClickEvent>(callback => ChangeVisibility("notePanel", !note.ClassListContains("blocked-tab"), LoadFolders));
         news.RegisterCallback<ClickEvent>(callback => ChangeVisibility("newsPanel", true));
-        post.RegisterCallback<ClickEvent>(callback => ChangeVisibility("postPanel", !post.ClassListContains("blocked-tab")));
-        result.RegisterCallback<ClickEvent>(callback => ChangeVisibility("resultPanel", !result.ClassListContains("blocked-tab")));
+        post.RegisterCallback<ClickEvent>(callback => ChangeVisibility("postPanel", !post.ClassListContains("blocked-tab"), UpdateTextForPost));
+        result.RegisterCallback<ClickEvent>(callback => ChangeVisibility("resultPanel", !result.ClassListContains("blocked-tab"), UpdateResultPanel));
     }
 
     public void StartContent(List<Posts> postsToShow)
@@ -522,7 +524,8 @@ public class GameUIController : MonoBehaviour
                 coreTruthTitle.text = s + ":";
                 VisualElement coreTruthWordsContainer = panel.Q<VisualElement>("wordsPanel");
                 coreTruthWordsContainer.Clear();
-                panel.RegisterCallback<ClickEvent>(evt => {
+                panel.RegisterCallback<ClickEvent>(evt =>
+                {
                     currentChosenPanel = panel;
                     buttonClickSource.Play();
                 });
@@ -609,13 +612,54 @@ public class GameUIController : MonoBehaviour
         Label postText = document.rootVisualElement.Q<Label>("postText");
         postText.text = string.Join(" ", approvedWords.Select(sw => sw.Word));
     }
-
+    private void UpdateWidgetsInfo()
+    {
+        Label popularityLabel = document.rootVisualElement.Q<Label>("popularityLabel");
+        popularityLabel.text = "" + DatabaseManager.Instance.GetMedia(1).Readers;
+        Label trustLabel = document.rootVisualElement.Q<Label>("trustLabel");
+        trustLabel.text = DatabaseManager.Instance.GetMedia(1).Credibility + "/10";
+    }
     public void HandleArticle(Articles article)
     {
         Label postText = document.rootVisualElement.Q<Label>("postText");
         postText.text = article.Content;
         result.RemoveFromClassList("blocked-tab");
         PlayUnlockEffects(result);
+        UpdateWidgetsInfo();
+    }
+    private void UpdateResultPanel()
+    {
+        Label resultPopularityLabel = document.rootVisualElement.Q<Label>("resultPopularityLabel");
+        resultPopularityLabel.text = DatabaseManager.Instance.GetMedia(1).Readers.ToString();
+
+        Label resultTrustLabel = document.rootVisualElement.Q<Label>("resultTrustLabel");
+        resultTrustLabel.text = DatabaseManager.Instance.GetMedia(1).Credibility + "/10";
+
+        int targetPopularity = DatabaseManager.Instance.GetMedia(1).Readers;
+        float targetTrust = DatabaseManager.Instance.GetMedia(1).Credibility;
+
+        StartCoroutine(AnimateLabel(resultTrustLabel, targetTrust, "/10"));
+        StartCoroutine(AnimateLabel(resultPopularityLabel, targetPopularity));
+
+        Label noteByAI = document.rootVisualElement.Q<Label>("noteByAI");
+        // noteByAI.text += ;
+    }
+
+    private IEnumerator AnimateLabel(Label label, float targetValue, string suffix = "")
+    {
+        float currentValue = 0f;
+        float increment = targetValue / 8f;
+        for (int i = 0; i < 8; i++)
+        {
+            currentValue += increment;
+            if (currentValue > targetValue)
+                currentValue = targetValue;
+
+            buttonClickSource.Play();
+            label.text = Mathf.RoundToInt(currentValue).ToString() + suffix;
+
+            yield return new WaitForSeconds(0.25f);
+        }
     }
 
     //buttons effects
