@@ -68,10 +68,8 @@ public class GameUIController : MonoBehaviour
     {
         originalAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/GameUI.uxml");
         int activeEventId = GameManager.instance.ActiveEventId;
-        Debug.Log($"Active event id: {activeEventId}");
         if (activeEventId != 0)
         {
-            Debug.Log("Initializated");
             List<Posts> postsToShow = DatabaseManager.Instance.GetPostsForEvent(activeEventId);
             StartContent(postsToShow);
 
@@ -361,7 +359,6 @@ public class GameUIController : MonoBehaviour
     {
         float effectiveX = clickPosition.x - textLabel.resolvedStyle.paddingLeft;
         float effectiveY = clickPosition.y - textLabel.resolvedStyle.paddingTop;
-        Debug.Log($"ClickPosition: {clickPosition}, EffectiveX: {effectiveX}, EffectiveY: {effectiveY}");
 
         string text = originalTextPerLabel.ContainsKey(textLabel) ? originalTextPerLabel[textLabel] : textLabel.text;
 
@@ -373,7 +370,6 @@ public class GameUIController : MonoBehaviour
                                - textLabel.resolvedStyle.paddingRight;
         float spaceWidth = textLabel.MeasureTextSize(" ", 0, VisualElement.MeasureMode.Undefined,
                                                      0, VisualElement.MeasureMode.Undefined).x;
-        Debug.Log($"AvailableWidth: {availableWidth}, SpaceWidth: {spaceWidth}");
 
         // Measure words while ignoring trailing punctuation
         List<(string word, float width, string rawWord)> measuredWords = new List<(string, float, string)>();
@@ -383,7 +379,6 @@ public class GameUIController : MonoBehaviour
             float w = textLabel.MeasureTextSize(cleanedWord, 0, VisualElement.MeasureMode.Undefined,
                                                 0, VisualElement.MeasureMode.Undefined).x;
             measuredWords.Add((cleanedWord, w, word)); // Store both cleaned and raw word
-            Debug.Log($"Word: {word}, Cleaned: {cleanedWord}, Width: {w}");
         }
 
         // Arrange words into lines based on available width
@@ -414,12 +409,9 @@ public class GameUIController : MonoBehaviour
         {
             lines.Add(currentLine);
         }
-
-        Debug.Log($"Total Lines: {lines.Count}");
         for (int i = 0; i < lines.Count; i++)
         {
             string lineContent = string.Join(" ", lines[i].Select(item => item.word));
-            Debug.Log($"Line {i}: {lineContent}");
         }
 
         // Compute line height dynamically
@@ -430,13 +422,11 @@ public class GameUIController : MonoBehaviour
             computedLineHeight = textLabel.MeasureTextSize(firstLineText, 0, VisualElement.MeasureMode.Undefined,
                                                            0, VisualElement.MeasureMode.Undefined).y;
         }
-        Debug.Log($"ComputedLineHeight: {computedLineHeight}");
 
         // Determine which line the user clicked on
         int lineIndex = Mathf.FloorToInt(effectiveY / computedLineHeight);
         if (lineIndex < 0 || lineIndex >= lines.Count)
         {
-            Debug.Log("Click outside of text lines.");
             return "";
         }
         var clickedLine = lines[lineIndex];
@@ -453,7 +443,6 @@ public class GameUIController : MonoBehaviour
         {
             lineOffset = availableWidth - lineWidth;
         }
-        Debug.Log($"LineOffset: {lineOffset}, LineWidth: {lineWidth}");
 
         for (int i = 0; i < clickedLine.Count; i++)
         {
@@ -472,11 +461,9 @@ public class GameUIController : MonoBehaviour
                 wordWidth += spaceWidth; // Add tolerance for punctuation spacing
             }
 
-            Debug.Log($"Word '{clickedLine[i].rawWord}' starts at {wordStartX} with width {wordWidth}");
 
             if (effectiveX >= wordStartX && effectiveX <= wordStartX + wordWidth)
             {
-                Debug.Log($"Detected word: {clickedLine[i].rawWord} (line {lineIndex}, startX: {wordStartX}, width: {wordWidth})");
                 return clickedLine[i].rawWord; // Return original word with punctuation
             }
         }
@@ -698,7 +685,6 @@ public class GameUIController : MonoBehaviour
             }
             else
             {
-                Debug.Log("Cannot add more words - limit reached");
                 sw.IsApproved = false;
             }
         }

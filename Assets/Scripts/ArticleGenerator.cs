@@ -70,15 +70,15 @@ public class ArticleGenerator : MonoBehaviour
         // Updated prompt
         string prompt = $@"
 Notes on Word Panels:
-The player's selected words are organized according to predefined word panels for the event. The mapping of word panels to fact keys is as follows:
+The player's selected words are organized according to predefined word panels for the event and are provided in a specific order corresponding to the order in which the player selected them. The mapping of word panels to fact keys is as follows:
    - Time To Market
    - Distance Traveled
    - Team Size
-The selected words are formatted as lines where each line contains a panel name followed by a colon and the player's selected value. For example:
+The selected words are formatted as lines where each line contains a panel name followed by a colon and the player's selected value, in the order provided. For example:
    Time To Market: 200
    Team Size: 150 members
    Distance Traveled: [value, if provided]
-These values should be used to replace the corresponding fact keys in the Core Truth.
+These values should be used to replace the corresponding fact keys in the Core Truth. It is critical that the order of the selected words is preserved exactly as provided. If any panel's selected words are missing or empty, that fact key must be assigned a veracity score of 1, which will significantly lower the overall score.
 
 You are a news generator for a media literacy game. The event details above include a Core Truth in JSON format with several fact keys (for example, ""teamSize"", ""size"", ""timeToMarket"", etc.). The player has provided their selected words for each fact key using the word panels format described above. Note that the player's selections might be formatted differently or be less detailed than the original data. For instance:
    - If the Core Truth contains:
@@ -105,11 +105,14 @@ Specific Points and Validation Rules:
        a. If the selected words capture the intended meaning (e.g., numeric values or qualitative descriptions), consider it a perfect match.
        b. If a fact key is not mentioned in the original posts, do not penalize the player's score for that fact.
        c. If the player's selection is less precise but still conveys the correct sense, assign a high veracity rating.
-       d. If the selection is completely off or missing, reduce the veracity rating accordingly.
+       d. If the selection is completely off, missing, or empty, assign a veracity score of 1 for that fact key.
+       e. The overall veracity score should be calculated by averaging the fact-level scores, so any missing or empty selection will greatly lower the overall score.
+       f. The order of the player's selected words must be preserved exactly as provided. Any deviation from this order should also result in a lower veracity score.
 
 3. Veracity Scoring and Verdict:
+   - You should value JUST the player's selected words, not other information!
    - Assign a veracity score on a scale from 1 to 10:
-         1 indicates very poor accuracy (completely random or missing relevant information).
+         1 indicates very poor accuracy (completely random, missing, or empty data).
          10 indicates near-perfect accuracy.
    - Provide a concise, supportive verdict that explains the player's performance in clear, non-technical language using friendly and encouraging terms. When referring to fact keys, use user-friendly names (e.g., ""Time To Market"" instead of ""timeToMarket"").
 
@@ -174,6 +177,7 @@ Do not include any additional text or formatting outside of valid JSON.
 
         if (request.result == UnityWebRequest.Result.Success)
         {
+            try{ 
             string jsonResponse = request.downloadHandler.text;
             Debug.Log("ARTICLE: Raw API Response: " + jsonResponse);
 
@@ -191,12 +195,12 @@ Do not include any additional text or formatting outside of valid JSON.
                 VeracityScore = articleJson["veracityScore"],
                 Verdict = articleJson["verdict"]
             };
-            Debug.Log("TITLE: " + newArticle.Title);
-            Debug.Log("CONTENT" + newArticle.Content);
-            Debug.Log("VERDICT: " + newArticle.Verdict);
             DatabaseManager.Instance.SaveArticle(newArticle);
             gameUIController.HandleArticle(newArticle);
             ChangeReputationLevel(newArticle);
+            } catch {
+                StartCoroutine(GenerateArticle());
+            }
         }
         else
         {
