@@ -40,7 +40,6 @@ public class ArticleGenerator : MonoBehaviour
         _instance = this;
         DontDestroyOnLoad(gameObject);
     }
-
     public IEnumerator GenerateArticle()
     {
         int activeEventId = GameManager.instance.ActiveEventId;

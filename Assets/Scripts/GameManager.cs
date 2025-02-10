@@ -9,8 +9,16 @@ public class GameManager : MonoBehaviour
     private DatabaseManager _dbManager;
     private ArticleGenerator _articleGenerator;
     private EventGenerator _eventGenerator;
+    public GameUIController _gameUIController;
+
+    private static ArticleGenerator _instance;
+
     public static GameManager instance;
 
+    public void GenerateEvent()
+    {
+        StartCoroutine(_eventGenerator.GenerateEvent());
+    }
 
     public void SetActiveEventId(int eventId)
     {
@@ -24,6 +32,7 @@ public class GameManager : MonoBehaviour
         _dbManager = gameObject.AddComponent<DatabaseManager>();
         _articleGenerator = gameObject.AddComponent<ArticleGenerator>();
         _eventGenerator = gameObject.AddComponent<EventGenerator>();
+        _gameUIController = GameObject.Find("GameUI").GetComponent<GameUIController>();
         if (instance == null)
         {
             instance = this;

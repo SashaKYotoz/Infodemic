@@ -32,6 +32,9 @@ public class GameUIController : MonoBehaviour
     private AudioSource buttonClickSource;
     [SerializeField]
     private AudioSource unlockTabSource;
+
+    private int currentIndex = 0;
+    private StyleBackground[] backgrounds;
     private void OnEnable()
     {
         document = GetComponent<UIDocument>();
@@ -74,6 +77,16 @@ public class GameUIController : MonoBehaviour
 
             LoadFolders();
         }
+
+        backgrounds = new StyleBackground[5];
+        for (int i = 0; i < backgrounds.Length; i++)
+        {
+            Texture2D texture = Resources.Load<Texture2D>($"loading_image_{i}");
+            if (texture != null)
+            {
+                backgrounds[i] = new StyleBackground(texture);
+            }
+        }
         UpdateWidgetsInfo();
     }
 
@@ -85,8 +98,16 @@ public class GameUIController : MonoBehaviour
         result.RegisterCallback<ClickEvent>(callback => ChangeVisibility("resultPanel", !result.ClassListContains("blocked-tab"), UpdateResultPanel));
 
         root.Q<Button>("mainExit").RegisterCallback<ClickEvent>(ShowModalWindow);
-        root.Q<Button>("postButton").RegisterCallback<ClickEvent>(callback => StartCoroutine(ArticleGenerator.Instance.GenerateArticle()));
+        root.Q<Button>("postButton").RegisterCallback<ClickEvent>(callback =>
+        {
+            StartCoroutine(ArticleGenerator.Instance.GenerateArticle());
+            root.Q<Button>("postButton").style.display = DisplayStyle.None;
+        });
         root.Q<Button>("backToFolder").RegisterCallback<ClickEvent>(callback => LoadFolders());
+        root.Q<Button>("generationButton").RegisterCallback<ClickEvent>(callback => {
+            ResetGame();
+            GameManager.instance.GenerateEvent();
+        });
 
         gameButtons = root.Query<Button>().ToList();
         gameButtons.ForEach(b => b.RegisterCallback<ClickEvent>(PlayClickSound));
@@ -147,7 +168,10 @@ public class GameUIController : MonoBehaviour
         post.RegisterCallback<ClickEvent>(callback => ChangeVisibility("postPanel", !post.ClassListContains("blocked-tab"), UpdateTextForPost));
         result.RegisterCallback<ClickEvent>(callback => ChangeVisibility("resultPanel", !result.ClassListContains("blocked-tab"), UpdateResultPanel));
     }
-
+    public void setLoadingToOn(DisplayStyle style)
+    {
+        document.rootVisualElement.Q<VisualElement>("loadingOverlay").style.display = style;
+    }
     public void StartContent(List<Posts> postsToShow)
     {
         ScrollView newsPanel = document.rootVisualElement.Q<ScrollView>("newsPanel");
@@ -248,7 +272,34 @@ public class GameUIController : MonoBehaviour
             PlayUnlockEffects(note);
         if (document.rootVisualElement.Q<ScrollView>("wordsHolder").childCount > 0 && post.ClassListContains("blocked-tab"))
             PlayUnlockEffects(post);
+        if (document.rootVisualElement.Q<VisualElement>("loadingOverlay").style.display == DisplayStyle.Flex)
+            StartCoroutine(AnimateLoading());
+        else
+            StopCoroutine(AnimateLoading());
     }
+    private void ResetGame(){
+        result.AddToClassList("blocked-tab");
+        post.AddToClassList("blocked-tab");
+        newsPanel.Clear();
+        document.rootVisualElement.Q<Button>("postButton").style.display = DisplayStyle.Flex;
+
+        //Remove from db too
+        originalTextPerLabel.Clear();
+        wordsPlayerSelected.Clear();
+        clickedWordsPerLabel.Clear();
+    }
+
+    private IEnumerator AnimateLoading()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(1f);
+            document.rootVisualElement.Q<VisualElement>("loadingOverlay").style.backgroundImage = backgrounds[currentIndex];
+            currentIndex = currentIndex > 4 ? 0 : (currentIndex + 1) % backgrounds.Length;
+        }
+    }
+
+
     private void PlayUnlockEffects(VisualElement tab)
     {
         if (tab.ClassListContains("blocked-tab"))
@@ -722,8 +773,8 @@ public class GameUIController : MonoBehaviour
         StartCoroutine(AnimateLabel(resultPopularityLabel, targetPopularity));
 
         Label noteByAI = document.rootVisualElement.Q<Label>("noteByAI");
-        var lastArticle =  DatabaseManager.Instance.GetArticlesByEventId(GameManager.instance.ActiveEventId)[0];
-        noteByAI.text += lastArticle.Verdict;
+        var lastArticle = DatabaseManager.Instance.GetArticlesByEventId(GameManager.instance.ActiveEventId)[0];
+        noteByAI.text = lastArticle.Verdict;
     }
 
     private IEnumerator AnimateLabel(Label label, float targetValue, string suffix = "")
@@ -738,7 +789,8 @@ public class GameUIController : MonoBehaviour
 
             buttonClickSource.Play();
             label.text = Mathf.RoundToInt(currentValue).ToString() + suffix;
-
+            if (i + 1 == 7)
+                UpdateWidgetsInfo();
             yield return new WaitForSeconds(0.25f);
         }
     }

@@ -8,6 +8,7 @@ using SQLite4Unity3d;
 using System.IO;
 using System.Linq;
 using UnityEngine.InputSystem;
+using UnityEngine.UIElements;
 
 public class EventGenerator : MonoBehaviour
 {
@@ -28,17 +29,9 @@ public class EventGenerator : MonoBehaviour
         //StartCoroutine(GenerateEvent());
     }
 
-    private void Update()
-    {
-        if (Keyboard.current.spaceKey.wasPressedThisFrame)
-        {
-            Debug.Log("Generating event...");
-            StartCoroutine(GenerateEvent());
-        }
-    }
-
     public IEnumerator GenerateEvent()
     {
+        GameManager.instance._gameUIController.setLoadingToOn(DisplayStyle.Flex);
         int randomEventTypeId = Random.Range(1, 19);
         var eventType = _connection.Find<EventType>(randomEventTypeId);
 
@@ -183,7 +176,6 @@ Validation Rules:
         };
         _connection.Insert(newEvent);
 
-        GameManager.instance.SetActiveEventId(newEvent.Id);
         // Save posts
         if (newEvent.Title == null || newEvent.GeneratedContent == null || newEvent.Description == null)
         {
@@ -194,6 +186,8 @@ Validation Rules:
             _postCreator.CreateAndSavePosts(eventJson, newEvent.Id);
             CreateNewFolderForEvent(newEvent.Title, newEvent.Description, newEvent.Id);
             Debug.Log("Event and posts saved successfully!");
+            GameManager.instance._gameUIController.setLoadingToOn(DisplayStyle.None);
+            GameManager.instance.SetActiveEventId(newEvent.Id);
         }
     }
     public void CreateNewFolderForEvent(string folderName, string folderDescription, int eventId)
